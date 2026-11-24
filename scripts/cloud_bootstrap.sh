@@ -87,6 +87,10 @@ $PY -m pytest -q tests
 log "7. pass-1 smoke test: 2 stations x 2 days"
 bash scripts/smoke_test.sh cuda
 
+log "7b. fp16 (AMP) pick check on the GPU: enable picking.amp in config/cloud.yaml only if all picks match"
+$PY src/download.py --config config/cloud.yaml --stations HD01 --start 2013-05-01 --end 2013-05-04 --streams 3
+$PY scripts/bench_amp.py --device cuda --config config/cloud.yaml --station HD01 --day 2013-05-02 2>&1 | grep -v -i warn | tee data/logs/bench_amp_cuda.txt || true
+
 log "8. download throughput vs streams (sets DL_THREADS for run_full.sh)"
 bash scripts/bench_download.sh "4 8 16 24" | tee data/logs/bench_download_cloud.txt
 echo -e "\nBootstrap finished. Start the run with:  bash scripts/run_full.sh"

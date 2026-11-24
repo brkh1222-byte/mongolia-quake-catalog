@@ -50,6 +50,7 @@ picking:
   # and let the ensemble decide.
   raw_threshold: {P: 0.2, S: 0.2}
   batch_size: 256
+  amp: false                 # fp16 autocast; see scripts/bench_amp.py
   torch_threads: 4
 
 ensemble:

@@ -88,9 +88,16 @@ def load_models(cfg, device, log):
 
 
 def run_model(model, st, cfg, t0, t1) -> pd.DataFrame:
+    import torch
+
     thr = cfg["picking"]["raw_threshold"]
-    out = model.classify(st, P_threshold=thr["P"], S_threshold=thr["S"],
-                         batch_size=cfg["picking"]["batch_size"])
+    dev = next(model.parameters()).device.type
+    # Optional fp16 autocast (config picking.amp). On the Mac fp16 reproduced all
+    # fp32 picks within 10 ms for all six pairs (scripts/bench_amp.py); enable on the
+    # cloud GPU only after the same check there.
+    with torch.autocast(device_type=dev, dtype=torch.float16, enabled=bool(cfg["picking"].get("amp", False))):
+        out = model.classify(st, P_threshold=thr["P"], S_threshold=thr["S"],
+                             batch_size=cfg["picking"]["batch_size"])
     rows = []
     for p in out.picks:
         if p.peak_time is None or not (t0 <= p.peak_time < t1):

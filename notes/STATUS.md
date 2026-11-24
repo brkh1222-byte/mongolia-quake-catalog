@@ -1,3 +1,22 @@
+# STATUS (updated 2026-11-24 19:20 +08)
+
+## Running now (all resumable)
+- `src/download.py` Jan 2013 HD, 4 streams (`data/logs/dl_pilot.out`), ~4.4 MB/s, ETA ~21:30.
+- `scripts/pilot_pick_loop.sh` → `src/pick.py --device mps --require-next-day` (`data/logs/pilot_pick.out`), ~43 s per station-day for 6 pairs, so ~27 h for the month (ETA ~2026-11-25 22:00).
+- `scripts/smoke_test.sh cpu` (pass-1 smoke test in the scratchpad dir, `data/logs/smoke_cpu.out`).
+- `scripts/fetch_quakescope_all.sh` (all QuakeScope XL months, availability proxy).
+
+Restart after a reboot: rerun the same three commands. Each skips what is finished:
+```bash
+cd ~/Desktop/mongolia-quake-catalog
+nohup caffeinate -i nice -n 10 .venv/bin/python src/download.py --start 2013-01-01 --end 2013-02-01 --stations HD --streams 4 --tag pilot > data/logs/dl_pilot.out 2>&1 &
+nohup caffeinate -i bash scripts/pilot_pick_loop.sh 2013-01-01 2013-02-01 HD > /dev/null 2>&1 &
+```
+After picking: `ensemble.py → associate.py → locate.py (+ --vmodel config/vmodel_dashdondog2020.yaml --suffix _dd2020) → snippets.py → magnitude.py → xcorr.py → compare_quakescope.py → validate.py → analyze.py --pilot → report_pilot.py`, all with `--start 2013-01-01 --end 2013-02-01 --stations HD --tag pilot_2013-01`.
+
+---
+(older checkpoint below)
+
 # STATUS (checkpoint 2026-11-24 ~16:05 +08, Mac shutdown)
 
 ## Plan as of the latest instructions
