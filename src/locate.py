@@ -65,13 +65,13 @@ class TwoLayer:
         return np.minimum(direct, head)
 
 
-def make_model(cfg):
+def make_model(cfg, datum_km=0.0):
     lay = cfg["velocity_model"]["layers"]
     if len(lay) == 2 and cfg["velocity_model"].get("kind", "analytic") == "analytic":
         return TwoLayer(cfg)
     from traveltime import TableModel
 
-    return TableModel(lay)
+    return TableModel(lay, datum_km=datum_km)
 
 
 def local_proj(lat0, lon0):
@@ -116,8 +116,10 @@ def locate_event(model, ex0, sx, sy, se, ph, tobs, w, zbounds=(-3.0, 60.0)):
 
 def locate_catalog(cfg, events: pd.DataFrame, assignments: pd.DataFrame, stations: pd.DataFrame,
                    log=None):
-    model = make_model(cfg)
-    zb = (-3.0, 60.0) if isinstance(model, TwoLayer) else (0.0, 60.0)
+    # datum = mean station elevation: sources may lie above sea level, up to that level
+    datum = round(float(stations.elev.mean()) / 1000.0, 2)
+    model = make_model(cfg, datum_km=datum)
+    zb = (-3.0, 60.0) if isinstance(model, TwoLayer) else (-datum, 60.0)
     lat0, lon0 = stations.lat.mean(), stations.lon.mean()
     proj = local_proj(lat0, lon0)
     sxy = {r.station: (*proj(r.lon, r.lat), r.elev / 1000.0) for r in stations.itertuples()}

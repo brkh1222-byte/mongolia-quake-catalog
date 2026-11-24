@@ -116,23 +116,33 @@ def write_pyocto_model(layers, path: Path, delta=1.0, xmax=900.0, zmax=65.0):
 
 
 class TableModel:
-    """Locator interface: tt(phase, x, z, e) from interpolated tables plus a
-    vertical elevation static e / v_top."""
+    """Locator interface: tt(phase, x, z, e) from interpolated tables.
 
-    def __init__(self, layers, delta=0.5, xmax=800.0, zmax=80.0):
+    `datum_km` is a reference elevation (km above sea level, e.g. the mean
+    station elevation). The tables are computed for a receiver ON the datum, with
+    the layer interfaces kept at their true depths below sea level. A source at
+    depth z (km below sea level, may be negative down to -datum) is then at
+    z + datum below the receiver level, and a station at elevation e gets the
+    vertical static (e - datum) / v_top. With datum = 0 this is the plain
+    sea-level model with a floor at z = 0."""
+
+    def __init__(self, layers, delta=0.5, xmax=800.0, zmax=80.0, datum_km=0.0):
         from scipy.interpolate import RegularGridInterpolator
 
         self.zmax = zmax
+        self.datum = float(datum_km)
+        shifted = [dict(L, depth=(L["depth"] + self.datum) if i > 0 else min(L["depth"] + self.datum, 0.0))
+                   for i, L in enumerate(layers)]
         self.interp, self.v_top = {}, {}
         x = np.arange(int(xmax / delta)) * delta
         z = np.arange(int(zmax / delta)) * delta
         for ph, key in (("P", "vp"), ("S", "vs")):
-            T = table(layers, key, delta, xmax, zmax)
+            T = table(shifted, key, delta, xmax, zmax)
             self.interp[ph] = RegularGridInterpolator((x, z), T, bounds_error=False, fill_value=None)
-            self.v_top[ph] = _layers_array(layers, key)[1][0]
+            self.v_top[ph] = _layers_array(shifted, key)[1][0]
 
     def tt(self, phase, x, z, e):
         x = np.atleast_1d(np.asarray(x, float))
-        zz = np.clip(np.broadcast_to(np.asarray(z, float), x.shape), 0.0, self.zmax)
-        t = self.interp[phase](np.c_[np.abs(x), zz]) + np.asarray(e) / self.v_top[phase]
+        zz = np.clip(np.broadcast_to(np.asarray(z, float) + self.datum, x.shape), 0.0, self.zmax)
+        t = self.interp[phase](np.c_[np.abs(x), zz]) + (np.asarray(e) - self.datum) / self.v_top[phase]
         return t if t.size > 1 else float(t[0])

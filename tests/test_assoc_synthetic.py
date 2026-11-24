@@ -17,7 +17,7 @@ def test_pyocto_associates_and_locator_recovers_synthetic_events():
 
     cfg = load_config()
     st = select_stations(cfg, "HD", "2013-01-01", "2013-02-01")
-    m = make_model(cfg)
+    m = make_model(cfg, datum_km=round(float(st.elev.mean()) / 1000.0, 2))  # same datum as locate_catalog
     rng = np.random.default_rng(7)
     proj = local_proj(st.lat.mean(), st.lon.mean())
     sx, sy = proj(st.lon.to_numpy(), st.lat.to_numpy())
