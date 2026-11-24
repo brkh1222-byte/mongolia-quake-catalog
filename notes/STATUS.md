@@ -1,18 +1,28 @@
-# STATUS (updated 2026-11-24 19:20 +08)
+# STATUS (updated 2026-11-25 00:50 +08)
 
 ## Running now (all resumable)
-- `src/download.py` Jan 2013 HD, 4 streams (`data/logs/dl_pilot.out`), ~4.4 MB/s, ETA ~21:30.
-- `scripts/pilot_pick_loop.sh` → `src/pick.py --device mps --require-next-day` (`data/logs/pilot_pick.out`), ~43 s per station-day for 6 pairs, so ~27 h for the month (ETA ~2026-11-25 22:00).
-- `scripts/smoke_test.sh cpu` (pass-1 smoke test in the scratchpad dir, `data/logs/smoke_cpu.out`).
-- `scripts/fetch_quakescope_all.sh` (all QuakeScope XL months, availability proxy).
+- `scripts/pilot_download_loop.sh 2013-01-01 2013-02-01 HD 2`: batches of 100 station-days, **2 streams** (polite to the shared network; picking needs only ~0.35 MB/s). Has a watchdog that restarts after a 15-min stall. Log `data/logs/dl_loop.out`. About 1,080 station-days left.
+- `scripts/pilot_pick_loop.sh 2013-01-01 2013-02-01 HD`: `pick.py --device mps --require-next-day`. ~45–60 s per station-day when the GPU is not shared (it slowed to 1,000–6,600 s per station-day while another project used MPS and swap was full). Day 3 was in progress at 00:40.
+- `scripts/smoke_test.sh mps`: pass-1 smoke test (2 stations × 2 days, isolated dir). Log `data/logs/smoke_mps.out`.
+- `scripts/fetch_quakescope_all.sh`: refetches the QuakeScope months that failed during the outages.
 
-Restart after a reboot: rerun the same three commands. Each skips what is finished:
+## Network outages so far (2)
+- Found a robustness bug: `stream_run` downloader threads died when the FDSN `Client()` could not be built during an outage, and the picker then waited forever. **Fixed**: client creation now retries with backoff; a thread always signals its exit; failed downloads go back to `todo` and are not marked `nodata`.
+- `download.py` hung after the first outage. The new loop script has a watchdog.
+
+## Restart after a reboot
 ```bash
 cd ~/Desktop/mongolia-quake-catalog
-nohup caffeinate -i nice -n 10 .venv/bin/python src/download.py --start 2013-01-01 --end 2013-02-01 --stations HD --streams 4 --tag pilot > data/logs/dl_pilot.out 2>&1 &
+nohup caffeinate -i bash scripts/pilot_download_loop.sh 2013-01-01 2013-02-01 HD 2 > data/logs/dl_loop.out 2>&1 &
 nohup caffeinate -i bash scripts/pilot_pick_loop.sh 2013-01-01 2013-02-01 HD > /dev/null 2>&1 &
 ```
 After picking: `ensemble.py → associate.py → locate.py (+ --vmodel config/vmodel_dashdondog2020.yaml --suffix _dd2020) → snippets.py → magnitude.py → xcorr.py → compare_quakescope.py → validate.py → analyze.py --pilot → report_pilot.py`, all with `--start 2013-01-01 --end 2013-02-01 --stations HD --tag pilot_2013-01`.
+
+## Early findings (day 1, partial network)
+- Strict ensemble: 815 picks on 40 stations → 12 events. Loose ensemble (≥2 pairs, p ≥ 0.1): 3,177 picks → 15 events.
+- PyOcto with a 300 km association cutoff: identical events, 0.2 s instead of 32 s (D16).
+- With the 2-layer model many depths pin near the surface. With the Dashdondog (2020) 8-layer model, the rms of events inside the network drops from 0.23–0.38 s to 0.06–0.12 s. **Candidate switch of the primary model, to be decided on the full pilot month.**
+- The 2013-01-01 01:14 event matches ISC (mb 3.6, 48.45 N 102.91 E), ~27 km offset (outside the network, dmin ~150 km).
 
 ---
 (older checkpoint below)

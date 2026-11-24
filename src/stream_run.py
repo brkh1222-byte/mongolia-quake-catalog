@@ -165,19 +165,44 @@ def downloader(cfg, con, worker, buf: Buffer, q: queue.Queue, stop: threading.Ev
     from obspy.clients.fdsn import Client
     from obspy.clients.fdsn.header import FDSNNoDataException
 
-    client = Client(cfg["fdsn"]["base_url"], timeout=300)
-    net = cfg["fdsn"]["network"]
+    try:
+        _downloader_loop(cfg, con, worker, buf, q, stop, log, Client, FDSNNoDataException)
+    except Exception as e:  # never die silently: the picker would wait forever
+        log.error("downloader thread crashed: %s", e)
+    finally:
+        q.put(None)
+
+
+def make_client(cfg, log, stop):
+    """FDSN client with retries: construction does a service-discovery request,
+    which fails while the network is down (seen in the pilot during outages)."""
+    from obspy.clients.fdsn import Client
+
+    wait = 30
     while not stop.is_set():
+        try:
+            return Client(cfg["fdsn"]["base_url"], timeout=300)
+        except Exception as e:
+            log.warning("FDSN client init failed (%s); retrying in %d s", str(e)[:120], wait)
+            time.sleep(wait)
+            wait = min(wait * 2, 600)
+    return None
+
+
+def _downloader_loop(cfg, con, worker, buf, q, stop, log, Client, FDSNNoDataException):
+    client = make_client(cfg, log, stop)
+    net = cfg["fdsn"]["network"]
+    while not stop.is_set() and client is not None:
         rows = claim(con, worker, 1)
         if not rows:
-            q.put(None)
             return
         sta, day = rows[0]
         t = UTCDateTime(day)
         f = buf.file(sta, day)
         tic = time.time()
         ok = f.exists() and f.stat().st_size > 0
-        for attempt in range(4):
+        nodata = False
+        for attempt in range(6):
             if ok:
                 break
             try:
@@ -187,12 +212,14 @@ def downloader(cfg, con, worker, buf: Buffer, q: queue.Queue, stop: threading.Ev
                 tmp.replace(f)
                 ok = True
             except FDSNNoDataException:
+                nodata = True
                 break
             except Exception as e:
                 log.warning("%s %s download attempt %d: %s", sta, day, attempt + 1, str(e)[:160])
-                time.sleep(30 * (attempt + 1))
+                time.sleep(min(30 * 2 ** attempt, 900))
         if not ok:
-            set_status(con, sta, day, "nodata", dl_s=time.time() - tic)
+            # 'nodata' only if the data centre said so; network failures go back to 'todo'
+            set_status(con, sta, day, "nodata" if nodata else "todo", dl_s=time.time() - tic)
             continue
         set_status(con, sta, day, "downloaded", bytes=f.stat().st_size, dl_s=time.time() - tic)
         q.put((sta, day))  # blocks when the prefetch buffer is full
