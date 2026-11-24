@@ -1,0 +1,46 @@
+2026-11-25 00:40:56,452 stream INFO ledger now has 4 station-days (4 offered)
+2026-11-25 00:41:04,696 stream INFO loaded PhaseNet/stead on mps
+2026-11-25 00:41:05,091 stream INFO loaded PhaseNet/instance on mps
+2026-11-25 00:41:05,881 stream INFO loaded PhaseNet/original on mps
+2026-11-25 00:41:07,910 stream INFO loaded EQTransformer/stead on mps
+2026-11-25 00:41:09,266 stream INFO loaded EQTransformer/instance on mps
+2026-11-25 00:41:10,627 stream INFO loaded EQTransformer/original on mps
+2026-11-25 00:43:24,264 stream INFO smoke1 stopping after 1 station-days
+2026-11-25 00:43:34,547 stream INFO reset 3 stale in-flight station-days
+2026-11-25 00:43:41,056 stream INFO loaded PhaseNet/stead on mps
+2026-11-25 00:43:41,895 stream INFO loaded PhaseNet/instance on mps
+2026-11-25 00:43:42,129 stream INFO loaded PhaseNet/original on mps
+2026-11-25 00:43:42,913 stream INFO loaded EQTransformer/stead on mps
+2026-11-25 00:43:44,100 stream INFO loaded EQTransformer/instance on mps
+2026-11-25 00:43:44,947 stream INFO loaded EQTransformer/original on mps
+2026-11-25 00:49:21,045 stream INFO smoke2 stopping after 3 station-days
+subarray status  n       gb      dl_s     pick_s
+      HD   done  4 0.079864 11.448726 104.864746
+done=4 (expect 4)  raw parquet=24 (expect 24)  ensemble=4 (expect 4)  20Hz files=4 (expect 4)  leftover raw=0 (expect 0)
+20 Hz copy size:  14M	/private/tmp/claude-501/-Users-berkh-Desktop/78cad124-ce7a-4468-9cdc-2701192f3a08/scratchpad/mqc_smoke.d5b3/data/mseed20
+20 Hz check: ['XL.HD01', '2013', '010.mseed'] [('XL.HD01..HHE', 20.0, 1728000), ('XL.HD01..HHN', 20.0, 1728000), ('XL.HD01..HHZ', 20.0, 1728000)]
+ensemble picks: 48 {'P': 29, 'S': 19}
+--- device agreement (mps vs cpu) on HD01 2013-01-10 ---
+2026-11-25 00:49:41,561 download INFO 1 stations, 1 station-days to fetch (2013-01-10 – 2013-01-11)
+2026-11-25 00:49:57,598 download INFO 1/1 station-days, 0.02 GB, 1.15 MB/s (1 streams)
+2026-11-25 00:49:57,606 download INFO finished: {'n': 1, 'bytes': 16236544, 'seconds': 14.102214813232422, 'mbps': 1.1513470908672365, 'streams': 1}
+{'model': 'PhaseNet', 'weights': 'stead', 'device': 'mps', 'seconds': 8.8, 'n_picks': 4, 'batch': 256, 'threads': 4}
+{'model': 'PhaseNet', 'weights': 'instance', 'device': 'mps', 'seconds': 10.5, 'n_picks': 22, 'batch': 256, 'threads': 4}
+{'model': 'PhaseNet', 'weights': 'original', 'device': 'mps', 'seconds': 7.6, 'n_picks': 30, 'batch': 256, 'threads': 4}
+{'model': 'PhaseNet', 'weights': 'original', 'device': 'cpu', 'seconds': 222.5, 'n_picks': 30, 'batch': 256, 'threads': 4}
+{'model': 'EQTransformer', 'weights': 'stead', 'device': 'mps', 'seconds': 20.5, 'n_picks': 7, 'batch': 256, 'threads': 4}
+{'model': 'EQTransformer', 'weights': 'instance', 'device': 'mps', 'seconds': 19.7, 'n_picks': 30, 'batch': 256, 'threads': 4}
+{'model': 'EQTransformer', 'weights': 'original', 'device': 'mps', 'seconds': 20.6, 'n_picks': 8, 'batch': 256, 'threads': 4}
+{'model': 'EQTransformer', 'weights': 'original', 'device': 'cpu', 'seconds': 733.4, 'n_picks': 8, 'batch': 256, 'threads': 4}
+PhaseNet/original: cpu 30 picks, mps 30 picks, 30 cpu picks within 10 ms on mps
+EQTransformer/original: cpu 8 picks, mps 8 picks, 8 cpu picks within 10 ms on mps
+        model  weights device  seconds  n_picks  batch  threads  cpu_picks_matched  cpu_picks
+     PhaseNet    stead    mps      8.8        4    256        4                NaN        NaN
+     PhaseNet instance    mps     10.5       22    256        4                NaN        NaN
+     PhaseNet original    mps      7.6       30    256        4               30.0       30.0
+     PhaseNet original    cpu    222.5       30    256        4                NaN        NaN
+EQTransformer    stead    mps     20.5        7    256        4                NaN        NaN
+EQTransformer instance    mps     19.7       30    256        4                NaN        NaN
+EQTransformer original    mps     20.6        8    256        4                8.0        8.0
+EQTransformer original    cpu    733.4        8    256        4                NaN        NaN
+SMOKE TEST PASSED (/private/tmp/claude-501/-Users-berkh-Desktop/78cad124-ce7a-4468-9cdc-2701192f3a08/scratchpad/mqc_smoke.d5b3)

@@ -1,4 +1,11 @@
-# STATUS (updated 2026-11-25 00:50 +08)
+# STATUS (updated 2026-11-25 01:20 +08)
+
+**Interim hand-back sent to the coordinator.** The pilot month is still picking; resume to finish validation.
+- Pass-1 smoke test (MPS, 2 stations × 2 days, with interruption and resume): **PASSED**; MPS = CPU picks (30/30, 8/8). Log `results/smoke_test_mps.log`.
+- Pilot chain verified end to end on days 1–2 (`data/catalogs/dbg_d12`, report generator tested).
+- Picking: 203 of ~2,214 station-days done; ~50 s per station-day → ETA ≈ 2026-11-26 05:00 if the MPS GPU is not shared.
+- When picking is done, run: `bash scripts/run_pilot_chain.sh 2013-01-01 2013-02-01 pilot_2013-01`, then decide the primary velocity model (2-layer vs Dashdondog 2020) from the full-month residuals, then delete the continuous data (keep snippets) and free ~40 GB.
+
 
 ## Running now (all resumable)
 - `scripts/pilot_download_loop.sh 2013-01-01 2013-02-01 HD 2`: batches of 100 station-days, **2 streams** (polite to the shared network; picking needs only ~0.35 MB/s). Has a watchdog that restarts after a 15-min stall. Log `data/logs/dl_loop.out`. About 1,080 station-days left.
