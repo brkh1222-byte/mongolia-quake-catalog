@@ -131,10 +131,11 @@ def compute_xcorr(cfg, cat, picks, max_sep_km=10.0, max_lag=0.6, device="cpu", f
         return wf_cache[i]
 
     K = int(round(max_lag * fs))
-    jobs, T, S = [], [], []
+    buf = {"P": ([], [], []), "S": ([], [], [])}  # per phase: jobs, templates, segments (equal lengths)
     rows = []
 
-    def flush():
+    def flush(ph):
+        jobs, T, S = buf[ph]
         if not jobs:
             return
         ncomp = {}
@@ -143,12 +144,12 @@ def compute_xcorr(cfg, cat, picks, max_sep_km=10.0, max_lag=0.6, device="cpu", f
         for (key, _comp), c in zip(jobs, cc):
             ncomp.setdefault(key, []).append(c)
         for key, cs in ncomp.items():
-            i, j, sta, ph = key
+            i, j, sta, ph_ = key
             lag_idx, ccmax = subsample_peak(np.mean(cs, axis=0))
             lag = (lag_idx - K) / fs
             ev_i, ev_j = cat.iloc[i], cat.iloc[j]
-            dt = (pk[(ev_i.event_id, sta, ph)] - ev_i.time) - (pk[(ev_j.event_id, sta, ph)] + lag - ev_j.time)
-            rows.append((ev_i.event_id, ev_j.event_id, sta, ph, dt, ccmax, lag))
+            dt = (pk[(ev_i.event_id, sta, ph_)] - ev_i.time) - (pk[(ev_j.event_id, sta, ph_)] + lag - ev_j.time)
+            rows.append((ev_i.event_id, ev_j.event_id, sta, ph_, dt, ccmax, lag))
         jobs.clear(); T.clear(); S.clear()
 
     for i, j in pairs:
@@ -169,10 +170,11 @@ def compute_xcorr(cfg, cat, picks, max_sep_km=10.0, max_lag=0.6, device="cpu", f
                     s = _segment(wj[(sta, comp)], pk[(ej, sta, ph)], b + max_lag, a + max_lag, fs)
                     if t is None or s is None or len(s) != len(t) + 2 * K:
                         continue
-                    jobs.append(((i, j, sta, ph), comp)); T.append(t); S.append(s)
-        if len(jobs) >= batch:
-            flush()
-    flush()
+                    buf[ph][0].append(((i, j, sta, ph), comp)); buf[ph][1].append(t); buf[ph][2].append(s)
+        for ph in ("P", "S"):
+            if len(buf[ph][0]) >= batch:
+                flush(ph)
+    flush("P"); flush("S")
     df = pd.DataFrame(rows, columns=["evid1", "evid2", "station", "phase", "dt", "cc", "lag"])
     return df[df.cc >= min_cc].reset_index(drop=True), len(pairs)
 

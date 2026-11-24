@@ -120,7 +120,10 @@ def main(argv=None):
     refs = pd.concat([fetch_reference(cfg, n, args.start, args.end, box, log) for n in SERVICES], ignore_index=True)
     from shapely import points, contains
 
-    refs["inside"] = contains(fp, points(refs.longitude.to_numpy(), refs.latitude.to_numpy()))
+    for c in ("latitude", "longitude", "time"):
+        refs[c] = pd.to_numeric(refs[c], errors="coerce")
+    refs = refs.dropna(subset=["latitude", "longitude", "time"]).reset_index(drop=True)
+    refs["inside"] = contains(fp, points(refs.longitude.to_numpy(float), refs.latitude.to_numpy(float)))
     m = match_reference(cat, refs)
     m["origin_time"] = [str(UTCDateTime(x)) for x in m.time]
     m.to_csv(path(cfg, "results") / f"validation_{args.tag}.csv", index=False)

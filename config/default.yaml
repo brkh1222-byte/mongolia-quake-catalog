@@ -56,7 +56,7 @@ picking:
 ensemble:
   tolerance_s: {P: 0.3, S: 0.5}
   min_models: 2               # a pick must be found by >= 2 of the 6 model/weight pairs
-  min_mean_prob: 0.3          # mean prob over all models (missing model = 0)
+  min_mean_prob: 0.1          # mean prob over all 6 pairs (missing = 0); 0.3 lost ~45% of events on the pilot (D17)
 
 velocity_model:
   # PROPOSAL §6: Vp 6.4, Vs 3.6 km/s crust, Moho ~50 km (Meltzer et al. 2019).

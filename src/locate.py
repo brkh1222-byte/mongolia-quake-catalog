@@ -186,6 +186,28 @@ def quality_flags(cat: pd.DataFrame, cfg) -> pd.DataFrame:
     return cat
 
 
+def remove_split_duplicates(cat: pd.DataFrame, dt_s=20.0, dist_km=150.0):
+    """PyOcto sometimes splits one large regional event into two: the second
+    'event' is built from later regional phases (Pg/Sg/Lg picked as P/S) and is
+    located ~5–15 s earlier or later and tens of km away (pilot days 1–2: 4 of 44
+    events, all M > 2 events NE of the array, each matching one ISC/BYKL event).
+    Within dt_s and dist_km, keep the event with more picks; return (kept, removed)."""
+    c = cat.sort_values("time").reset_index(drop=True)
+    drop = set()
+    for i in range(len(c)):
+        if i in drop:
+            continue
+        j = i + 1
+        while j < len(c) and c.time[j] - c.time[i] <= dt_s:
+            d = 111.2 * np.hypot(c.latitude[j] - c.latitude[i],
+                                 (c.longitude[j] - c.longitude[i]) * np.cos(np.radians(c.latitude[i])))
+            if d <= dist_km and j not in drop:
+                drop.add(j if c.n_picks[j] <= c.n_picks[i] else i)
+            j += 1
+    keep = c.drop(index=list(drop)).reset_index(drop=True)
+    return keep, c.loc[sorted(drop)]
+
+
 def main(argv=None):
     ap = base_parser(__doc__)
     ap.add_argument("--tag", required=True)
@@ -204,6 +226,10 @@ def main(argv=None):
     stations = select_stations(cfg, args.stations or cfg["pilot"]["subarray"], args.start, args.end)
     cat, picks = locate_catalog(cfg, events, assignments, stations, log)
     cat = quality_flags(cat, cfg)
+    cat, dups = remove_split_duplicates(cat)
+    dups.to_csv(d / f"events_split_duplicates{args.suffix}.csv", index=False)
+    log.info("removed %d split duplicates", len(dups))
+    picks = picks[picks.event_id.isin(cat.event_id)]
     cat.to_csv(d / f"events{args.suffix}.csv", index=False)
     picks.to_parquet(d / f"picks{args.suffix}.parquet", index=False)
     log.info("quality classes: %s", cat.quality.value_counts().to_dict())

@@ -96,10 +96,14 @@ def select_stations(cfg: dict, spec: str | None, start=None, end=None):
             if it in cfg["subarrays"]:
                 mask |= st["subarray"] == it
         st = st[mask]
+    def naive(t):
+        t = pd.Timestamp(str(t))
+        return t.tz_convert(None) if t.tzinfo is not None else t
+
     if start is not None:
-        st = st[st["end"] >= pd.Timestamp(start)]
+        st = st[st["end"] >= naive(start)]
     if end is not None:
-        st = st[st["start"] < pd.Timestamp(end)]
+        st = st[st["start"] < naive(end)]
     return st.reset_index(drop=True)
 
 

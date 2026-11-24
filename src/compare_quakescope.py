@@ -157,9 +157,10 @@ def main(argv=None):
             continue
         raw = pd.concat(frames, ignore_index=True)
         raw["t"] = to_epoch(raw.time)
-        raw03 = raw[raw.prob >= 0.3].reset_index(drop=True)  # SeisBench default threshold
-        d3, a3, b3 = match(raw03, qs_cov)
-        rows += summarise(f"PhaseNet/{w} (p>=0.3) vs QuakeScope", raw03, qs_cov, d3, a3, b3)
+        for thr in ((0.2, 0.3) if w == "instance" else (0.3,)):
+            rr = raw[raw.prob >= thr].reset_index(drop=True)
+            d3, a3, b3 = match(rr, qs_cov)
+            rows += summarise(f"PhaseNet/{w} (p>={thr}) vs QuakeScope", rr, qs_cov, d3, a3, b3)
     res = pd.DataFrame(rows)
     out = path(cfg, "results")
     res.to_csv(out / f"quakescope_{args.tag}.csv", index=False)

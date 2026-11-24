@@ -58,7 +58,8 @@ def windows_for_event(ev, stations, model, picked: set, radius_km: float):
 
 def cut_local(cfg, net, sta, t0, t1) -> Stream:
     st = Stream()
-    for t in sorted({UTCDateTime(t0.date), UTCDateTime(t1.date)}):
+    d0, d1 = UTCDateTime(t0.date), UTCDateTime(t1.date)
+    for t in ([d0] if d0 == d1 else [d0, d1]):
         f = day_path(cfg, net, sta, t)
         if f.exists():
             st += read(str(f), starttime=t0, endtime=t1)
@@ -92,6 +93,8 @@ def main(argv=None):
     ap.add_argument("--radius-km", type=float, default=150.0)
     ap.add_argument("--min-quality", default="C", help="skip events worse than this class")
     ap.add_argument("--threads", type=int, default=4, help="parallel event fetches (FDSN)")
+    ap.add_argument("--local", action="store_true", help="cut from local day files (pilot), one read per station-day")
+    ap.add_argument("--fetch-missing", action="store_true", help="with --local: fetch windows missing locally from FDSN")
     args = ap.parse_args(argv)
     cfg = load_config(args.config)
     log = get_logger("snippets", path(cfg, "logs") / "snippets.log")
@@ -126,8 +129,61 @@ def main(argv=None):
         tmp.replace(f)
         return 1
 
-    with ThreadPoolExecutor(max_workers=args.threads) as ex:
-        n_new = sum(ex.map(lambda a: job(*a), enumerate(cat.itertuples())))
+    # Local mode (pilot, data on disk): read each station-day file once and cut
+    # every event window from it; much faster than one read per event-station.
+    from collections import defaultdict
+
+    def process_chunk(todo):
+        wins_by_ev = {ev.event_id: windows_for_event(ev, stations, model, picked_by_event.get(ev.event_id, set()),
+                                                     args.radius_km) for _, ev in todo}
+        by_day = defaultdict(list)
+        for eid, wins in wins_by_ev.items():
+            for net, sta, t0, t1 in wins:
+                for dday in {str(t0.date), str(t1.date)}:
+                    by_day[(net, sta, dday)].append((eid, t0, t1))
+        got = defaultdict(Stream)
+        for (net, sta, dday), items in sorted(by_day.items(), key=lambda x: (x[0][2], x[0][1])):
+            f = day_path(cfg, net, sta, UTCDateTime(dday))
+            if not f.exists():
+                continue
+            dst = read(str(f))
+            for eid, t0, t1 in items:
+                got[eid] += dst.slice(t0, t1).copy()
+        ev_by_id = {ev.event_id: (k, ev) for k, ev in todo}
+
+        def job_local(eid):
+            k, ev = ev_by_id[eid]
+            st = got.get(eid, Stream())
+            st.merge(method=1, fill_value=None)
+            st = st.split()
+            missing = [(n, s_, "*", "HH?", t0, t1) for n, s_, t0, t1 in wins_by_ev[eid]
+                       if not st.select(station=s_)]
+            if missing and args.fetch_missing:
+                try:
+                    st += clients[k % args.threads].get_waveforms_bulk(missing)
+                except Exception:
+                    pass
+            if not len(st):
+                return 0
+            f = snippet_path(cfg, ev.event_id, ev.origin_time)
+            f.parent.mkdir(parents=True, exist_ok=True)
+            tmp = f.with_suffix(f".{k}.tmp")
+            st.write(str(tmp), format="MSEED")
+            tmp.replace(f)
+            return 1
+
+        return sum(job_local(eid) for eid in wins_by_ev)
+
+    if args.local:
+        todo_all = [(k, ev) for k, ev in enumerate(cat.itertuples())
+                    if not snippet_path(cfg, ev.event_id, ev.origin_time).exists()]
+        days_ = sorted({str(UTCDateTime(ev.time).date) for _, ev in todo_all})
+        n_new = 0
+        for dday in days_:  # one origin day at a time keeps memory small
+            n_new += process_chunk([(k, ev) for k, ev in todo_all if str(UTCDateTime(ev.time).date) == dday])
+    else:
+        with ThreadPoolExecutor(max_workers=args.threads) as ex:
+            n_new = sum(ex.map(lambda a: job(*a), enumerate(cat.itertuples())))
     log.info("%d new snippet files for %d events", n_new, len(cat))
 
 
