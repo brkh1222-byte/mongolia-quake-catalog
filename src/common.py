@@ -122,3 +122,12 @@ def days(start, end):
         out.append(t)
         t += 86400
     return out
+
+
+def to_epoch(times):
+    """ISO time strings / datetimes -> float POSIX seconds. Unit-safe under
+    pandas 3, whose datetime resolution is not always nanoseconds."""
+    import pandas as pd
+
+    dt = pd.to_datetime(pd.Series(times), utc=True, format="ISO8601")
+    return ((dt - pd.Timestamp("1970-01-01", tz="UTC")).dt.total_seconds()).to_numpy()
