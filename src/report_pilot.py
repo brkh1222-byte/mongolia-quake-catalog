@@ -52,9 +52,14 @@ def count_raw(cfg, stations, start, end):
 
 def main(argv=None):
     ap = base_parser(__doc__)
+    from ensemble import add_ensemble_args
+
+    add_ensemble_args(ap)
     ap.add_argument("--tag", required=True)
     args = ap.parse_args(argv)
-    cfg = load_config(args.config)
+    from ensemble import apply_ensemble_args
+
+    cfg = apply_ensemble_args(load_config(args.config), args)
     res = path(cfg, "results")
     d = path(cfg, "catalogs") / args.tag
     st = select_stations(cfg, args.stations or "HD", args.start, args.end)

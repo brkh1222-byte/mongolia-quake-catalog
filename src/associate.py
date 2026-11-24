@@ -51,7 +51,7 @@ def step_points(layers, zmax=200.0) -> pd.DataFrame:
     return pd.DataFrame(pts)
 
 
-def velocity_model(cfg, tolerance=2.0):
+def velocity_model(cfg, tolerance=None):
     import pyocto
 
     layers = step_points(cfg["velocity_model"]["layers"])
@@ -65,7 +65,9 @@ def velocity_model(cfg, tolerance=2.0):
         f.parent.mkdir(parents=True, exist_ok=True)
         write_pyocto_model(cfg["velocity_model"]["layers"], f, delta=1.0, xmax=900.0,
                            zmax=cfg["association"]["zlim"][1] + 5.0)
-    return pyocto.VelocityModel1D(f, tolerance=tolerance)
+    a = cfg["association"]
+    return pyocto.VelocityModel1D(f, tolerance=tolerance or a.get("tt_tolerance", 1.5),
+                                  association_cutoff_distance=a.get("association_cutoff_km"))
 
 
 def build_associator(cfg, stations: pd.DataFrame):
@@ -128,9 +130,14 @@ def associate(cfg, picks: pd.DataFrame, stations: pd.DataFrame, log=None):
 
 def main(argv=None):
     ap = base_parser(__doc__)
+    from ensemble import add_ensemble_args
+
+    add_ensemble_args(ap)
     ap.add_argument("--tag", required=True, help="output folder under data/catalogs/")
     args = ap.parse_args(argv)
-    cfg = load_config(args.config)
+    from ensemble import apply_ensemble_args
+
+    cfg = apply_ensemble_args(load_config(args.config), args)
     log = get_logger("associate")
     stations = select_stations(cfg, args.stations or cfg["pilot"]["subarray"], args.start, args.end)
     picks = load_ensemble(cfg, stations, args.start, args.end)

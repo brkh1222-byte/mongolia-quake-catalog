@@ -73,6 +73,8 @@ association:
   n_s_picks: 2
   n_p_and_s_picks: 2
   pick_match_tolerance: 1.5
+  tt_tolerance: 1.5           # travel-time tolerance of the velocity model (s)
+  association_cutoff_km: 300  # stations farther than this do not count for association (60x faster, same events on the pilot)
   zlim: [0.0, 60.0]
   xy_margin_km: 100.0
 

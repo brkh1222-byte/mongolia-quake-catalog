@@ -108,9 +108,14 @@ def summarise(name, a, b, dts, ma, mb):
 
 def main(argv=None):
     ap = base_parser(__doc__)
+    from ensemble import add_ensemble_args
+
+    add_ensemble_args(ap)
     ap.add_argument("--tag", required=True)
     args = ap.parse_args(argv)
-    cfg = load_config(args.config)
+    from ensemble import apply_ensemble_args
+
+    cfg = apply_ensemble_args(load_config(args.config), args)
     log = get_logger("quakescope")
     net = cfg["fdsn"]["network"]
     stations = select_stations(cfg, args.stations or cfg["pilot"]["subarray"], args.start, args.end)

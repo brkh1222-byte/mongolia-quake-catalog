@@ -86,7 +86,25 @@ def ensemble_from_cfg(raw: pd.DataFrame, cfg: dict) -> pd.DataFrame:
 
 def ens_path(cfg, net, sta, t) -> Path:
     t = UTCDateTime(t)
-    return path(cfg, "picks") / "ensemble" / f"{net}.{sta}" / f"{t.year}" / f"{t.julday:03d}.parquet"
+    name = cfg["ensemble"].get("name") or "ensemble"
+    return path(cfg, "picks") / name / f"{net}.{sta}" / f"{t.year}" / f"{t.julday:03d}.parquet"
+
+
+def apply_ensemble_args(cfg, args):
+    """CLI overrides for testing alternative ensemble rules side by side."""
+    if getattr(args, "min_models", None) is not None:
+        cfg["ensemble"]["min_models"] = args.min_models
+    if getattr(args, "min_prob", None) is not None:
+        cfg["ensemble"]["min_mean_prob"] = args.min_prob
+    if getattr(args, "ensemble_name", None):
+        cfg["ensemble"]["name"] = args.ensemble_name
+    return cfg
+
+
+def add_ensemble_args(ap):
+    ap.add_argument("--min-models", type=int, default=None)
+    ap.add_argument("--min-prob", type=float, default=None)
+    ap.add_argument("--ensemble-name", default=None, help="folder under data/picks/ (default 'ensemble')")
 
 
 def load_raw_day(cfg, net, sta, t) -> pd.DataFrame | None:
@@ -105,8 +123,9 @@ def load_raw_day(cfg, net, sta, t) -> pd.DataFrame | None:
 
 def main(argv=None):
     ap = base_parser(__doc__)
+    add_ensemble_args(ap)
     args = ap.parse_args(argv)
-    cfg = load_config(args.config)
+    cfg = apply_ensemble_args(load_config(args.config), args)
     log = get_logger("ensemble")
     net = cfg["fdsn"]["network"]
     stations = select_stations(cfg, args.stations or cfg["pilot"]["subarray"], args.start, args.end)
