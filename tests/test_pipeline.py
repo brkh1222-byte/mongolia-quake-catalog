@@ -128,3 +128,15 @@ def test_depth_percentiles_and_blasts():
     mine = pd.DataFrame(dict(time=t_mine, latitude=47.05, longitude=lon_mine, depth_km=0.5))
     flag, ratio, overall = A.blast_flags(pd.concat([cat, mine], ignore_index=True))
     assert flag[-30:].mean() > 0.9 and flag[:n].mean() < 0.05
+
+
+def test_layered_tables_match_analytic_two_layer():
+    from traveltime import first_arrival
+    m = TwoLayer(CFG)
+    lay = CFG["velocity_model"]["layers"]
+    x = np.array([0.0, 10, 50, 150, 250, 400, 700])
+    for z in (0.0, 5.0, 15.0, 35.0):
+        for ph, key in (("P", "vp"), ("S", "vs")):
+            ref = m.tt(ph, x, z, 0.0)
+            got = first_arrival(lay, key, x, z)
+            assert np.allclose(got, ref, atol=0.02), (z, ph, got - ref)

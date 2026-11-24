@@ -56,11 +56,15 @@ def velocity_model(cfg, tolerance=2.0):
 
     layers = step_points(cfg["velocity_model"]["layers"])
     tag = "_".join(f"{r.depth:g}-{r.vp:g}-{r.vs:g}" for r in layers.itertuples())
-    f = path(cfg, "meta") / f"pyocto_vmodel_{tag}.bin"
+    f = path(cfg, "meta") / f"pyocto_vmodel_v2_{tag}.bin"
     if not f.exists():
+        # Our own exact layered first-arrival tables in PyOcto's binary format
+        # (pyocto's create_model needs pyrocko, which does not build against NumPy 2).
+        from traveltime import write_pyocto_model
+
         f.parent.mkdir(parents=True, exist_ok=True)
-        pyocto.VelocityModel1D.create_model(layers, delta=1.0, xdist=900.0,
-                                            zdist=cfg["association"]["zlim"][1] + 5.0, path=f)
+        write_pyocto_model(cfg["velocity_model"]["layers"], f, delta=1.0, xmax=900.0,
+                           zmax=cfg["association"]["zlim"][1] + 5.0)
     return pyocto.VelocityModel1D(f, tolerance=tolerance)
 
 

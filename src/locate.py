@@ -65,47 +65,13 @@ class TwoLayer:
         return np.minimum(direct, head)
 
 
-class GridModel:
-    """General layered 1-D model: travel-time tables from the fast-marching
-    eikonal solver of pyrocko (the same solver PyOcto uses), for a receiver at
-    sea level. Sources are at depth z >= 0 below sea level. The station
-    elevation e (km) adds a vertical static e / v_top. Times between grid nodes
-    are bilinearly interpolated (grid 0.5 km)."""
-
-    def __init__(self, cfg, delta=0.5, xmax=800.0, zmax=80.0):
-        from pyrocko.modelling import eikonal
-        from scipy.interpolate import RegularGridInterpolator
-
-        lay = cfg["velocity_model"]["layers"]
-        nx, nz = int(xmax / delta) + 1, int(zmax / delta) + 1
-        z = np.arange(nz) * delta
-        x = np.arange(nx) * delta
-        self.v_top, self.interp = {}, {}
-        for ph, key in (("P", "vp"), ("S", "vs")):
-            v = np.empty(nz)
-            for i, L in enumerate(lay):  # constant-velocity layers (steps)
-                v[z >= L["depth"]] = L[key]
-            v[z < max(lay[0]["depth"], 0)] = lay[0][key]
-            speeds = np.repeat(v[None, :], nx, axis=0)
-            times = -np.ones_like(speeds)
-            times[0, 0] = 0.0
-            eikonal.eikonal_solver_fmm_cartesian(speeds, times, delta)
-            self.interp[ph] = RegularGridInterpolator((x, z), times, bounds_error=False, fill_value=None)
-            self.v_top[ph] = float(v[0])
-        self.zmax = zmax
-
-    def tt(self, phase, x, z, e):
-        x = np.atleast_1d(np.asarray(x, float))
-        zz = np.clip(np.broadcast_to(np.asarray(z, float), x.shape), 0.0, self.zmax)
-        t = self.interp[phase](np.c_[np.abs(x), zz]) + np.asarray(e) / self.v_top[phase]
-        return t if t.size > 1 else float(t[0])
-
-
 def make_model(cfg):
     lay = cfg["velocity_model"]["layers"]
     if len(lay) == 2 and cfg["velocity_model"].get("kind", "analytic") == "analytic":
         return TwoLayer(cfg)
-    return GridModel(cfg)
+    from traveltime import TableModel
+
+    return TableModel(lay)
 
 
 def local_proj(lat0, lon0):
