@@ -1,35 +1,32 @@
-# STATUS (updated 2026-11-25 01:20 +08)
+# STATUS (updated 2026-11-25 01:30 +08)
 
-**Interim hand-back sent to the coordinator.** The pilot month is still picking; resume to finish validation.
-- Pass-1 smoke test (MPS, 2 stations × 2 days, with interruption and resume): **PASSED**; MPS = CPU picks (30/30, 8/8). Log `results/smoke_test_mps.log`.
-- Pilot chain verified end to end on days 1–2 (`data/catalogs/dbg_d12`, report generator tested).
-- Picking: 203 of ~2,214 station-days done; ~50 s per station-day → ETA ≈ 2026-11-26 05:00 if the MPS GPU is not shared.
-- When picking is done, run: `bash scripts/run_pilot_chain.sh 2013-01-01 2013-02-01 pilot_2013-01`, then decide the primary velocity model (2-layer vs Dashdondog 2020) from the full-month residuals, then delete the continuous data (keep snippets) and free ~40 GB.
+## Researcher decisions received 2026-11-25
+1. Velocity model: Dashdondog 2020 primary (done, D18); 2-layer = robustness check (`--vmodel config/vmodel_2layer.yaml --suffix _2layer`).
+2. Regions: Claude freezes `config/regions.geojson` from published geology with sources in decisions.md + a map figure. **IN PROGRESS**: DEM is at `data/reference/dem/etopo1.nc` (ETOPO1 via ERDDAP); a literature helper is collecting quotable definitions. Plan: interior = largest patch of 50-km-smoothed elevation above a published threshold; margin = HD footprint minus interior; Khövsgöl and Gobi-Altai = HV/AT footprints checked against published extents. Write `src/make_regions.py` + `results/fig_regions.png`.
+3. Faults: GEM (done, D19, `config/gem_faults_mongolia.geojson`).
+4. `brew install gcc fftw` is being run by the coordinator. When `brew list --versions gcc fftw` shows both: build GrowClust (git clone dttrugman/GrowClust, `make` in SRC with gfortran), `uv pip install eqcorrscan` and fast_matched_filter (CPU), test on pilot data. Only when picking is not competing; max 2 heavy processes.
+- Commit trailer is now `Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>`.
 
-
-## Running now (all resumable)
-- `scripts/pilot_download_loop.sh 2013-01-01 2013-02-01 HD 2`: batches of 100 station-days, **2 streams** (polite to the shared network; picking needs only ~0.35 MB/s). Has a watchdog that restarts after a 15-min stall. Log `data/logs/dl_loop.out`. About 1,080 station-days left.
-- `scripts/pilot_pick_loop.sh 2013-01-01 2013-02-01 HD`: `pick.py --device mps --require-next-day`. ~45–60 s per station-day when the GPU is not shared (it slowed to 1,000–6,600 s per station-day while another project used MPS and swap was full). Day 3 was in progress at 00:40.
-- `scripts/smoke_test.sh mps`: pass-1 smoke test (2 stations × 2 days, isolated dir). Log `data/logs/smoke_mps.out`.
-- `scripts/fetch_quakescope_all.sh`: refetches the QuakeScope months that failed during the outages.
-
-## Network outages so far (2)
-- Found a robustness bug: `stream_run` downloader threads died when the FDSN `Client()` could not be built during an outage, and the picker then waited forever. **Fixed**: client creation now retries with backoff; a thread always signals its exit; failed downloads go back to `todo` and are not marked `nodata`.
-- `download.py` hung after the first outage. The new loop script has a watchdog.
-
-## Restart after a reboot
+## Running now (detached, resumable)
+- `scripts/pilot_download_loop.sh 2013-01-01 2013-02-01 HD 2` (log `data/logs/dl_loop.out`), ~800 station-days left at 01:20.
+- `scripts/pilot_pick_loop.sh 2013-01-01 2013-02-01 HD` (MPS; ~45–50 s per station-day; day 4 of 31 at 01:25; ETA ≈ 26 Nov 05:00).
+Restart both after a reboot:
 ```bash
 cd ~/Desktop/mongolia-quake-catalog
 nohup caffeinate -i bash scripts/pilot_download_loop.sh 2013-01-01 2013-02-01 HD 2 > data/logs/dl_loop.out 2>&1 &
 nohup caffeinate -i bash scripts/pilot_pick_loop.sh 2013-01-01 2013-02-01 HD > /dev/null 2>&1 &
 ```
-After picking: `ensemble.py → associate.py → locate.py (+ --vmodel config/vmodel_dashdondog2020.yaml --suffix _dd2020) → snippets.py → magnitude.py → xcorr.py → compare_quakescope.py → validate.py → analyze.py --pilot → report_pilot.py`, all with `--start 2013-01-01 --end 2013-02-01 --stations HD --tag pilot_2013-01`.
 
-## Early findings (day 1, partial network)
-- Strict ensemble: 815 picks on 40 stations → 12 events. Loose ensemble (≥2 pairs, p ≥ 0.1): 3,177 picks → 15 events.
-- PyOcto with a 300 km association cutoff: identical events, 0.2 s instead of 32 s (D16).
-- With the 2-layer model many depths pin near the surface. With the Dashdondog (2020) 8-layer model, the rms of events inside the network drops from 0.23–0.38 s to 0.06–0.12 s. **Candidate switch of the primary model, to be decided on the full pilot month.**
-- The 2013-01-01 01:14 event matches ISC (mb 3.6, 48.45 N 102.91 E), ~27 km offset (outside the network, dmin ~150 km).
+## When picking is done
+`bash scripts/run_pilot_chain.sh 2013-01-01 2013-02-01 pilot_2013-01` (ensemble → associate → locate → locate_2l → snippets → magnitude → xcorr → quakescope → validate → analyze → report). Then:
+- confirm the 0.1 ensemble threshold on the full month (rerun ensemble/associate with `--min-prob 0.3 --ensemble-name ens_strict --tag pilot_strict` and compare);
+- magnitude calibration: `data/catalogs/pilot_2013-01/attenuation_fit.json` (joint inversion for n, K) and `results/magcal_pilot_2013-01.csv` (ISC all-magnitude matches); a helper is extracting the Ganbat & Munkhuu (2026) Mongolian ML formula;
+- fill paper §4 from `results/validation_month.md`; update `paper/notes.md`;
+- delete `data/mseed` (keep snippets) once everything is validated.
+
+## Done and verified
+- Pass-1 smoke test (MPS) passed; the pilot chain was verified end to end on days 1–2 (tag `dbg_d12`, made with the old 2-layer primary).
+- The cloud runbook stays in the repo (no GPU rental for now).
 
 ---
 (older checkpoint below)
