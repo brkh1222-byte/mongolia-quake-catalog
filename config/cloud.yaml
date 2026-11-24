@@ -1,0 +1,16 @@
+# Override for the rented RTX 4090 box. Merged over config/default.yaml with
+#   --config config/cloud.yaml
+# VOLUME is the persistent volume (RunPod: /workspace; Vast: often /workspace or /data).
+# scripts/cloud_bootstrap.sh symlinks <repo>/data -> $VOLUME/mqc-data, so the
+# relative paths below land on the volume.
+paths:
+  decimated: data/mseed20          # 20 Hz copy for template matching (~3.5 MB per station-day)
+  snippets: data/snippets
+download:
+  parallel_requests: 8
+picking:
+  device: cuda
+  batch_size: 1024
+  torch_threads: 4
+association:
+  n_threads: 8

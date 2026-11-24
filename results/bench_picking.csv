@@ -1,0 +1,9 @@
+model,weights,device,seconds,n_picks,batch,threads,cpu_picks_matched,cpu_picks
+PhaseNet,stead,mps,3.0,11,256,4,11.0,11.0
+PhaseNet,stead,cpu,49.5,11,256,4,,
+PhaseNet,instance,mps,2.8,91,256,4,,
+PhaseNet,original,mps,2.8,83,256,4,,
+EQTransformer,stead,mps,9.9,14,256,4,14.0,14.0
+EQTransformer,stead,cpu,338.2,14,256,4,,
+EQTransformer,instance,mps,10.9,52,256,4,,
+EQTransformer,original,mps,12.5,9,256,4,,

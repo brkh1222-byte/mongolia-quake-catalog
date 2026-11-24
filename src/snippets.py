@@ -91,6 +91,7 @@ def main(argv=None):
     ap.add_argument("--tag", required=True)
     ap.add_argument("--radius-km", type=float, default=150.0)
     ap.add_argument("--min-quality", default="C", help="skip events worse than this class")
+    ap.add_argument("--threads", type=int, default=4, help="parallel event fetches (FDSN)")
     args = ap.parse_args(argv)
     cfg = load_config(args.config)
     log = get_logger("snippets", path(cfg, "logs") / "snippets.log")
@@ -101,25 +102,32 @@ def main(argv=None):
     stations = select_stations(cfg, args.stations or cfg["pilot"]["subarray"], cat.origin_time.min(),
                                cat.origin_time.max())
     model = TwoLayer(cfg)
-    n_new = 0
-    client = None
-    for ev in cat.itertuples():
+    from concurrent.futures import ThreadPoolExecutor
+
+    from obspy.clients.fdsn import Client
+
+    clients = [Client(cfg["fdsn"]["base_url"], timeout=120) for _ in range(args.threads)]
+    picked_by_event = picks.groupby("event_id").station.apply(set).to_dict()
+
+    def job(k, ev):
         f = snippet_path(cfg, ev.event_id, ev.origin_time)
         if f.exists():
-            continue
-        picked = set(picks.loc[picks.event_id == ev.event_id, "station"])
-        wins = windows_for_event(ev, stations, model, picked, args.radius_km)
-        st = fetch_event(cfg, wins, client, log)
+            return 0
+        wins = windows_for_event(ev, stations, model, picked_by_event.get(ev.event_id, set()), args.radius_km)
+        st = fetch_event(cfg, wins, clients[k % args.threads], log)
         if not len(st):
-            continue
+            return 0
         for tr in st:
             if tr.data.dtype.kind == "f":
                 tr.data = tr.data.astype(np.float32)
         f.parent.mkdir(parents=True, exist_ok=True)
-        tmp = f.with_suffix(".tmp")
+        tmp = f.with_suffix(f".{k}.tmp")
         st.write(str(tmp), format="MSEED")
         tmp.replace(f)
-        n_new += 1
+        return 1
+
+    with ThreadPoolExecutor(max_workers=args.threads) as ex:
+        n_new = sum(ex.map(lambda a: job(*a), enumerate(cat.itertuples())))
     log.info("%d new snippet files for %d events", n_new, len(cat))
 
 

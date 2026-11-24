@@ -129,6 +129,9 @@ def main(argv=None):
     ap = base_parser(__doc__)
     ap.add_argument("--force", action="store_true", help="re-pick even if output exists")
     ap.add_argument("--threads", type=int, default=None, help="torch CPU threads")
+    ap.add_argument("--require-next-day", action="store_true",
+                    help="skip a station-day until the next day's file exists (download still running), "
+                         "so the 60 s midnight padding is always available")
     args = ap.parse_args(argv)
     cfg = load_config(args.config)
     log = get_logger("pick", path(cfg, "logs") / "pick.log")
@@ -144,6 +147,9 @@ def main(argv=None):
     with torch.no_grad():
         for t in days(start, end):            # day-major order: whole network per day
             for sta in stations.station:
+                if (args.require_next_day and t + 86400 < UTCDateTime(end)
+                        and not day_path(cfg, net, sta, t + 86400).exists()):
+                    continue
                 tic = time.time()
                 timing = pick_station_day(cfg, models, net, sta, t, log, force=args.force)
                 if timing is None:

@@ -215,6 +215,41 @@ def pick_buffered(cfg, models, f: Path, t: UTCDateTime):
     return frames
 
 
+def decimated_path(cfg, sta, t) -> Path:
+    root = Path(cfg["paths"].get("decimated", "data/mseed20"))
+    if not root.is_absolute():
+        root = path(cfg, "data").parent / root
+    t = UTCDateTime(t)
+    return root / f"XL.{sta}" / f"{t.year}" / f"{t.julday:03d}.mseed"
+
+
+def write_decimated(cfg, f: Path, sta, t, factor=5):
+    """20 Hz copy for template matching (pass 3): 8 Hz zero-phase low-pass
+    (anti-alias, below the 10 Hz Nyquist), decimate 100 -> 20 Hz, round to int32
+    counts and store Steim2-compressed (~1/5 of the raw size)."""
+    st = read(str(f)).select(channel="HH?")
+    st.trim(UTCDateTime(t), UTCDateTime(t) + 86400, nearest_sample=False)
+    st.merge(method=1, fill_value=None)
+    st = st.split()
+    out = st.copy()
+    out.traces = []
+    for tr in st:
+        if tr.stats.sampling_rate != 100.0 or tr.stats.npts < 500:
+            continue
+        tr.data = tr.data.astype(np.float64)
+        tr.detrend("demean")
+        tr.filter("lowpass", freq=8.0, corners=8, zerophase=True)
+        tr.decimate(factor, no_filter=True)
+        tr.data = np.round(tr.data).astype(np.int32)
+        out += tr
+    g = decimated_path(cfg, sta, t)
+    g.parent.mkdir(parents=True, exist_ok=True)
+    tmp = g.with_suffix(".tmp")
+    out.write(str(tmp), format="MSEED", encoding="STEIM2")
+    tmp.replace(g)
+    return g.stat().st_size
+
+
 def cmd_run(cfg, args, log):
     import torch
 
@@ -263,6 +298,8 @@ def cmd_run(cfg, args, log):
                 eo = ens_path(cfg, net, sta, t)
                 eo.parent.mkdir(parents=True, exist_ok=True)
                 ens.to_parquet(eo, index=False)
+                if args.decimate:
+                    write_decimated(cfg, f, sta, t)
                 if not args.keep_waveforms:
                     f.unlink(missing_ok=True)
                 set_status(con, sta, day, "done", pick_s=time.time() - tic, n_ens=len(ens))
@@ -286,6 +323,7 @@ def main(argv=None):
     ap.add_argument("--download-threads", type=int, default=3)
     ap.add_argument("--prefetch", type=int, default=6, help="max station-days waiting in data/buffer")
     ap.add_argument("--keep-waveforms", action="store_true")
+    ap.add_argument("--decimate", action="store_true", help="also keep a 20 Hz copy (paths.decimated)")
     ap.add_argument("--max-station-days", type=int, default=0)
     args = ap.parse_args(argv)
     cfg = load_config(args.config)

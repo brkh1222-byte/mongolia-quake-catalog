@@ -1,19 +1,25 @@
-"""T1.1: resumable, parallel download of XL day files with ObsPy MassDownloader.
+"""T1.1: resumable, parallel download of XL day files from the EarthScope FDSN
+dataselect service.
 
-Day files are written to  data/mseed/{net}.{sta}/{year}/{jday:03d}.mseed
-StationXML (response level) to  data/meta/stationxml/{net}.{sta}.xml
+Each station-day is one request (HH?, all locations), written atomically to
+    data/mseed/{net}.{sta}/{year}/{jday:03d}.mseed
+so a killed run never leaves a half-written file. Reruns skip existing files
+(resumable). Station-days the data centre reports as empty are remembered in
+data/logs/nodata.csv (pass --retry-nodata to ask again). Per-request timing and
+size go to data/logs/download_timing.csv, from which throughput (MB/s) is
+measured; seconds of data per channel go to data/logs/availability.csv.
 
-Resumability: MassDownloader skips every chunk whose target file already exists,
-so re-running the same command only fetches what is missing. Station-days that
-the data centre reports as empty are remembered in data/logs/nodata.csv so that
-reruns do not ask again (pass --retry-nodata to ignore that list).
+`--streams N` sets the number of parallel requests (threads). EarthScope asks
+users to keep concurrency modest. The pilot measured how throughput scales
+with N (see results/download_throughput.md).
 
-An availability log (seconds of data per channel and station-day) is appended
-to data/logs/availability.csv after each run (see src/availability.py).
+(The first version used ObsPy's MassDownloader. Plain per-day dataselect
+requests turned out simpler and are the same code path as the cloud streaming
+run in src/stream_run.py.)
 
 Examples
   python src/download.py --start 2013-05-01 --end 2013-05-04 --stations HD01,HD02
-  python src/download.py --start 2012-06-01 --end 2014-05-01 --stations HD      # H100 box
+  python src/download.py --start 2013-01-01 --end 2013-02-01 --stations HD --streams 8
 """
 from __future__ import annotations
 
@@ -22,75 +28,58 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import logging
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
-from obspy import UTCDateTime, read
-from obspy.clients.fdsn import Client
-from obspy.clients.fdsn.mass_downloader import MassDownloader, Restrictions, GlobalDomain
+from obspy import UTCDateTime
 
 from common import base_parser, day_path, days, get_logger, load_config, path, select_stations
 
-
-def make_storage(cfg):
-    """MassDownloader storage callbacks that map chunks onto our day-file layout."""
-    stationxml_dir = path(cfg, "stationxml")
-
-    def mseed_storage(network, station, location, channel, starttime, endtime):
-        # One file per station-day holding all three components. MassDownloader
-        # downloads per channel; we write to a per-channel temp name and merge
-        # into the day file in `merge_day_files` below.
-        p = day_path(cfg, network, station, starttime)
-        return str(p.with_name(f"{p.stem}.{location}.{channel}.part.mseed"))
-
-    def stationxml_storage(network, station, channels, starttime, endtime):
-        return str(stationxml_dir / f"{network}.{station}.xml")
-
-    return mseed_storage, stationxml_storage
+_lock = threading.Lock()
 
 
-def merge_day_files(cfg, net, sta, t, log) -> bool:
-    """Merge per-channel .part files into the final day file. Returns True if a
-    day file exists afterwards."""
-    final = day_path(cfg, net, sta, t)
-    parts = sorted(final.parent.glob(f"{final.stem}.*.part.mseed")) if final.parent.exists() else []
-    if final.exists() and not parts:
-        return True
-    if not parts:
-        return False
-    st = read(str(parts[0]))
-    for p in parts[1:]:
-        st += read(str(p))
-    if final.exists():
-        st += read(str(final))
-    st.merge(method=1, fill_value=None)
+def fetch_station_day(cfg, client, net, sta, t, pad=0.0):
+    """Download one station-day. Returns (status, bytes, seconds, stream|None)."""
+    from obspy.clients.fdsn.header import FDSNNoDataException
+
+    tic = time.time()
+    for attempt in range(cfg["download"]["retries"] + 1):
+        try:
+            st = client.get_waveforms(net, sta, cfg["fdsn"]["location"], "HH?", t - pad, t + 86400 + pad)
+            return "ok", st, time.time() - tic
+        except FDSNNoDataException:
+            return "nodata", None, time.time() - tic
+        except Exception as e:  # timeouts, 5xx: back off and retry
+            err = str(e)[:200]
+            time.sleep(min(120, 15 * (attempt + 1)))
+    return f"error: {err}", None, time.time() - tic
+
+
+def write_day(st, f: Path, t):
     st.trim(UTCDateTime(t), UTCDateTime(t) + 86400, nearest_sample=False)
-    st = st.split()  # keep gaps as separate traces, never fill with zeros
-    tmp = final.with_suffix(".tmp")
+    f.parent.mkdir(parents=True, exist_ok=True)
+    tmp = f.with_suffix(".tmp")
     st.write(str(tmp), format="MSEED")
-    tmp.replace(final)  # atomic: a killed run never leaves a half-written day file
-    for p in parts:
-        p.unlink()
-    return True
+    tmp.replace(f)
+    return f.stat().st_size
 
 
-def channels_complete(cfg, net, sta, t) -> bool:
-    """A day is complete if the merged day file exists and no .part files remain."""
-    final = day_path(cfg, net, sta, t)
-    return final.exists() and not list(final.parent.glob(f"{final.stem}.*.part.mseed"))
-
-
-def availability_rows(cfg, net, sta, t):
-    f = day_path(cfg, net, sta, t)
-    if not f.exists():
-        return []
-    st = read(str(f), headonly=True)
-    rows = {}
+def availability_rows(st, net, sta, t, nbytes):
+    secs = {}
     for tr in st:
-        rows.setdefault(tr.stats.channel, 0.0)
-        rows[tr.stats.channel] += tr.stats.npts / tr.stats.sampling_rate
-    return [dict(network=net, station=sta, day=str(t.date), channel=c, seconds=round(s, 1),
-                 bytes=f.stat().st_size) for c, s in rows.items()]
+        secs[tr.stats.channel] = secs.get(tr.stats.channel, 0.0) + tr.stats.npts / tr.stats.sampling_rate
+    return [dict(network=net, station=sta, day=str(t.date), channel=c, seconds=round(s, 1), bytes=nbytes)
+            for c, s in secs.items()]
+
+
+def _append_csv(f: Path, rows: list[dict]):
+    if not rows:
+        return
+    with _lock:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(rows).to_csv(f, mode="a", header=not f.exists(), index=False)
 
 
 def load_nodata(cfg) -> set:
@@ -101,64 +90,61 @@ def load_nodata(cfg) -> set:
     return set(zip(df.station, df.day))
 
 
-def run(cfg, stations: pd.DataFrame, start, end, log, retry_nodata=False, dry_run=False):
+def todo_list(cfg, stations, start, end, retry_nodata=False):
     net = cfg["fdsn"]["network"]
     nodata = set() if retry_nodata else load_nodata(cfg)
     todo = []
-    for _, s in stations.iterrows():
-        for t in days(max(UTCDateTime(start), UTCDateTime(s.start.date())),
-                      min(UTCDateTime(end), UTCDateTime(s.end) + 1)):
-            if channels_complete(cfg, net, s.station, t) or (s.station, str(t.date)) in nodata:
+    for t in days(start, end):  # day-major: the whole network fills in day by day
+        for s in stations.itertuples():
+            if not (UTCDateTime(s.start.date()) <= t <= UTCDateTime(s.end)):
+                continue
+            if day_path(cfg, net, s.station, t).exists() or (s.station, str(t.date)) in nodata:
                 continue
             todo.append((s.station, t))
-    log.info("%d station-days still to fetch", len(todo))
-    if dry_run or not todo:
-        return todo
-
-    # One MassDownloader call per station keeps requests small and lets a crash
-    # lose at most one station's in-flight chunks.
-    mseed_storage, sxml_storage = make_storage(cfg)
-    client = Client(cfg["fdsn"]["base_url"], timeout=240)
-    mdl = MassDownloader(providers=[client], configure_logging=False)
-    logging.getLogger("obspy.clients.fdsn.mass_downloader").setLevel(logging.WARNING)
-    for sta in sorted({s for s, _ in todo}):
-        tdays = sorted(t for s, t in todo if s == sta)
-        restr = Restrictions(
-            starttime=tdays[0], endtime=tdays[-1] + 86400, chunklength_in_sec=86400,
-            network=net, station=sta, location=cfg["fdsn"]["location"], channel="HH?",
-            reject_channels_with_gaps=False, minimum_length=cfg["download"]["minimum_length"],
-            minimum_interstation_distance_in_m=0, sanitize=False,
-            channel_priorities=["HH[ZNE12]"], location_priorities=["", "00", "10", "*"])
-        for attempt in range(cfg["download"]["retries"]):
-            try:
-                mdl.download(GlobalDomain(), restr, mseed_storage=mseed_storage,
-                             stationxml_storage=sxml_storage,
-                             threads_per_client=cfg["download"]["parallel_requests"],
-                             download_chunk_size_in_mb=50, print_report=False)
-                break
-            except Exception as e:  # network hiccup: retry the whole station
-                log.warning("%s attempt %d failed: %s", sta, attempt + 1, e)
-        new_nodata, avail = [], []
-        for t in tdays:
-            if merge_day_files(cfg, net, sta, t, log):
-                avail += availability_rows(cfg, net, sta, t)
-            else:
-                new_nodata.append(dict(station=sta, day=str(t.date)))
-        _append_csv(path(cfg, "logs") / "availability.csv", avail)
-        _append_csv(path(cfg, "logs") / "nodata.csv", new_nodata)
-        log.info("%s: %d days with data, %d without", sta, len(tdays) - len(new_nodata), len(new_nodata))
     return todo
 
 
-def _append_csv(f: Path, rows: list[dict]):
-    if not rows:
-        return
-    f.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows).to_csv(f, mode="a", header=not f.exists(), index=False)
+def run(cfg, todo, streams, log, tag=""):
+    from obspy.clients.fdsn import Client
+
+    net = cfg["fdsn"]["network"]
+    clients = [Client(cfg["fdsn"]["base_url"], timeout=300) for _ in range(streams)]
+    tl = path(cfg, "logs")
+    t_start, total = time.time(), 0
+
+    def job(k, sta, t):
+        status, st, dt = fetch_station_day(cfg, clients[k % streams], net, sta, t)
+        nbytes = 0
+        if status == "ok":
+            nbytes = write_day(st, day_path(cfg, net, sta, t), t)
+            _append_csv(tl / "availability.csv", availability_rows(st, net, sta, t, nbytes))
+        elif status == "nodata":
+            _append_csv(tl / "nodata.csv", [dict(station=sta, day=str(t.date))])
+        _append_csv(tl / "download_timing.csv", [dict(station=sta, day=str(t.date), status=status[:40],
+                                                      bytes=nbytes, seconds=round(dt, 2), streams=streams,
+                                                      finished=round(time.time(), 1), tag=tag)])
+        return sta, t, status, nbytes
+
+    with ThreadPoolExecutor(max_workers=streams) as ex:
+        futs = [ex.submit(job, k, sta, t) for k, (sta, t) in enumerate(todo)]
+        for n, fu in enumerate(as_completed(futs), 1):
+            sta, t, status, nbytes = fu.result()
+            total += nbytes
+            if status.startswith("error"):
+                log.warning("%s %s %s", sta, t.date, status)
+            if n % 25 == 0 or n == len(futs):
+                el = time.time() - t_start
+                log.info("%d/%d station-days, %.2f GB, %.2f MB/s (%d streams)", n, len(futs),
+                         total / 1e9, total / 1e6 / el, streams)
+    el = time.time() - t_start
+    return dict(n=len(todo), bytes=total, seconds=el, mbps=total / 1e6 / max(el, 1e-9), streams=streams)
 
 
 def main(argv=None):
     ap = base_parser(__doc__)
+    ap.add_argument("--streams", type=int, default=None, help="parallel requests")
+    ap.add_argument("--limit", type=int, default=0, help="only the first N station-days (benchmarks)")
+    ap.add_argument("--tag", default="", help="label written to download_timing.csv")
     ap.add_argument("--retry-nodata", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args(argv)
@@ -167,8 +153,14 @@ def main(argv=None):
     start = args.start or cfg["time"]["start"]
     end = args.end or cfg["time"]["end"]
     stations = select_stations(cfg, args.stations or "all", start, end)
-    log.info("%d stations selected for %s – %s", len(stations), start, end)
-    run(cfg, stations, start, end, log, retry_nodata=args.retry_nodata, dry_run=args.dry_run)
+    todo = todo_list(cfg, stations, start, end, args.retry_nodata)
+    if args.limit:
+        todo = todo[:args.limit]
+    log.info("%d stations, %d station-days to fetch (%s – %s)", len(stations), len(todo), start, end)
+    if args.dry_run or not todo:
+        return
+    res = run(cfg, todo, args.streams or cfg["download"]["parallel_requests"], log, args.tag)
+    log.info("finished: %s", res)
 
 
 if __name__ == "__main__":

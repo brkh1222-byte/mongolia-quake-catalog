@@ -2,18 +2,18 @@
 
 Work top to bottom. Each task has a "done when" check. Tick boxes in this file as tasks complete. Read PROPOSAL.md and CLAUDE.md first.
 
-> **Where things run:** cloud agents write and test code on *small slices* (1 station-day to 1 week). The full 1.3 TB download and the GPU steps run on the **H100 machine**. Every script must take `--start/--end/--stations` and a `--device cuda|cpu` flag.
+> **Where things run (updated 2026-11-24):** code is written and tested on the Mac (CPU/MPS) on small slices and the pilot month (Jan 2013, Hangay). The full run streams the 1.3 TB through a rented **RTX 4090** cloud box (`docs/cloud_runbook.md`). Every script takes `--start/--end/--stations` and a `--device cpu|mps|cuda` flag.
 
 ## Phase 0: Setup
-- [ ] **T0.1** Create `environment.yml` (python 3.11, obspy, seisbench, pyocto, pandas, pyarrow, numpy, scipy, matplotlib, cartopy, tqdm, torch with CUDA) and `config/default.yaml` for paths, time window and subarrays.
-- [ ] **T0.2** Write `src/stations.py` to fetch XL station metadata (StationXML) from the EarthScope FDSN service. Save `data/meta/stations.csv` with code, lat, lon, elev, start, end and subarray (HD/HV/AT). Make a station map in `results/fig_stations.png`.
+- [x] **T0.1** Create `environment.yml` (python 3.11, obspy, seisbench, pyocto, pandas, pyarrow, numpy, scipy, matplotlib, cartopy, tqdm, torch with CUDA) and `config/default.yaml` for paths, time window and subarrays.
+- [x] **T0.2** Write `src/stations.py` to fetch XL station metadata (StationXML) from the EarthScope FDSN service. Save `data/meta/stations.csv` with code, lat, lon, elev, start, end and subarray (HD/HV/AT). Make a station map in `results/fig_stations.png`.
   *Done when:* 114 stations listed; map shows the three subarrays.
 
 ## Phase 1: Download
-- [ ] **T1.1** Write `src/download.py`: ObsPy MassDownloader, resumable, parallel, organised as day files `data/mseed/{net}.{sta}/{year}/{jday}.mseed`. Log data availability.
+- [x] **T1.1** Write `src/download.py`: ObsPy MassDownloader, resumable, parallel, organised as day files `data/mseed/{net}.{sta}/{year}/{jday}.mseed`. Log data availability.
   *Done when:* it works for 2 stations × 3 days locally; it skips files that already exist.
 - [ ] **T1.2** Write `src/availability.py` to make a data-availability plot (station × time).
-- [ ] **T1.3** *(H100 machine)* Run the full download, Hangay subarray first.
+- [ ] **T1.3** *(cloud 4090 box)* Full streaming run (download → pick → delete), Hangay subarray first: `scripts/run_full.sh`.
 
 ## Phase 2: Picking
 - [ ] **T2.1** Write `src/pick.py`: SeisBench PhaseNet + EQTransformer (pretrained weights: `stead`, `instance`, `original`). Batch day-files on the GPU and write picks as parquet (station, phase, time, probability, model).
