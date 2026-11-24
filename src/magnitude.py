@@ -170,6 +170,53 @@ def distance_residual_trend(amps: pd.DataFrame, mags: pd.DataFrame):
     return float(sol[0]), float(sol[1])
 
 
+def fit_attenuation(amps: pd.DataFrame, r_ref=100.0, min_event_obs=6, r_range=(10.0, 400.0), n_boot=200, seed=0):
+    """Data-driven distance correction for this network (Richter-style joint inversion):
+        log10 A_ij = M_i - n log10(R_ij / r_ref) - K (R_ij - r_ref) - 3 + S_j
+    for events i and station-components j, with sum(S_j) = 0. Unknowns: M_i, n, K, S_j.
+    The anchor (ML 3 = 1 mm at 100 km) is the same as Hutton & Boore's, so n and K are
+    directly comparable with their 1.110 and 0.00189. Solved by sparse least squares;
+    uncertainties from an event bootstrap. Returns dict(n, K, n_ci, K_ci, n_obs, n_events)."""
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.linalg import lsqr
+
+    a = amps[(amps.hypo_km >= r_range[0]) & (amps.hypo_km <= r_range[1]) & (amps.amp_mm > 0)].copy()
+    cnt = a.groupby("event_id").amp_mm.transform("size")
+    a = a[cnt >= min_event_obs]
+    if a.event_id.nunique() < 10:
+        return dict(n=np.nan, K=np.nan, n_obs=len(a), n_events=a.event_id.nunique())
+    a["sc"] = a.station + "." + a.channel
+
+    def solve(df):
+        ev = {e: k for k, e in enumerate(df.event_id.unique())}
+        sc = {c: k for k, c in enumerate(df.sc.unique())}
+        ne, ns, m = len(ev), len(sc), len(df)
+        r = df.hypo_km.to_numpy()
+        rows = np.arange(m)
+        I = np.r_[rows, rows, rows, rows, np.full(ns, m)]
+        J = np.r_[df.event_id.map(ev).to_numpy(), np.full(m, ne), np.full(m, ne + 1),
+                  ne + 2 + df.sc.map(sc).to_numpy(), ne + 2 + np.arange(ns)]
+        V = np.r_[np.ones(m), -np.log10(r / r_ref), -(r - r_ref), np.ones(m), np.ones(ns)]
+        A = coo_matrix((V, (I, J)), shape=(m + 1, ne + 2 + ns)).tocsr()
+        y = np.r_[np.log10(df.amp_mm.to_numpy()) + 3.0, 0.0]
+        x = lsqr(A, y, atol=1e-10, btol=1e-10)[0]
+        return x[ne], x[ne + 1]
+
+    n, K = solve(a)
+    rng = np.random.default_rng(seed)
+    evs = a.event_id.unique()
+    groups = {e: g for e, g in a.groupby("event_id")}
+    bs = []
+    for _ in range(n_boot):
+        pick = rng.choice(evs, len(evs))
+        df = pd.concat([groups[e].assign(event_id=f"{e}_{k}") for k, e in enumerate(pick)], ignore_index=True)
+        bs.append(solve(df))
+    bs = np.array(bs) if bs else np.full((1, 2), np.nan)
+    return dict(n=float(n), K=float(K), n_ci=[float(v) for v in np.percentile(bs[:, 0], [2.5, 97.5])],
+                K_ci=[float(v) for v in np.percentile(bs[:, 1], [2.5, 97.5])], n_obs=len(a), n_events=len(evs),
+                r_min=float(a.hypo_km.min()), r_max=float(a.hypo_km.max()))
+
+
 def calibrate(ours: pd.DataFrame, matched_ref: pd.DataFrame, n_boot=2000, seed=0) -> dict:
     """matched_ref: columns event_id, ref_mag, ref_magtype. Offset = median(ref - ours)."""
     m = ours.merge(matched_ref, on="event_id").dropna(subset=["ml", "ref_mag"])
@@ -203,6 +250,13 @@ def main(argv=None):
         mags = mags.merge(pd.DataFrame(rows), on="event_id", how="left")
     slope, icpt = distance_residual_trend(amps, mags) if not amps.empty else (np.nan, np.nan)
     log.info("ML for %d/%d events; residual-vs-logR slope %.3f", mags.ml.notna().sum(), len(mags), slope)
+    if not amps.empty:
+        import json
+
+        fit = fit_attenuation(amps)
+        (d / "attenuation_fit.json").write_text(json.dumps(fit, indent=1))
+        log.info("attenuation fit (anchor 1 mm at 100 km): n=%.3f K=%.5f from %s obs, %s events (Hutton & Boore: 1.110, 0.00189)",
+                 fit.get("n", np.nan), fit.get("K", np.nan), fit.get("n_obs"), fit.get("n_events"))
     mags.to_csv(d / "magnitudes.csv", index=False)
     if not amps.empty:
         amps.to_parquet(d / "amplitudes.parquet", index=False)

@@ -73,6 +73,52 @@ def fetch_reference(cfg, name, start, end, box, log=None) -> pd.DataFrame:
     return out
 
 
+ISC_WEB = ("http://www.isc.ac.uk/cgi-bin/web-db-run?request=COMPREHENSIVE&out_format=CATCSV&searchshape=RECT"
+           "&bot_lat={la0}&top_lat={la1}&left_lon={lo0}&right_lon={lo1}"
+           "&start_year={y0}&start_month={m0}&start_day={d0}&start_time=00%3A00%3A00"
+           "&end_year={y1}&end_month={m1}&end_day={d1}&end_time=00%3A00%3A00&req_mag_type=Any&req_mag_agcy=Any")
+
+
+def fetch_isc_all_mags(cfg, start, end, box, log=None) -> pd.DataFrame:
+    """ISC Bulletin event list with the event TYPE (ke = known explosion, sm =
+    suspected mine blast, ...) and EVERY reported magnitude (author, type, value),
+    in long format: one row per (event, magnitude); events without a magnitude get
+    one row with NaN. Used for the magnitude calibration and the blast check."""
+    f = path(cfg, "reference") / f"ISCall_{start}_{end}_{'_'.join(f'{b:g}' for b in box)}.txt"
+    if not f.exists():
+        a, b = UTCDateTime(start), UTCDateTime(end)
+        url = ISC_WEB.format(la0=box[0], la1=box[1], lo0=box[2], lo1=box[3], y0=a.year, m0=a.month, d0=a.day,
+                             y1=b.year, m1=b.month, d1=b.day)
+        try:
+            txt = urllib.request.urlopen(url, timeout=300).read().decode(errors="replace")
+        except Exception as e:
+            txt = ""
+            if log:
+                log.warning("ISC web bulletin: %s", e)
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(txt)
+    rows = []
+    for ln in f.read_text().splitlines():
+        p = [x.strip() for x in ln.split(",")]
+        if len(p) < 9 or not p[0].isdigit():
+            continue
+        try:
+            t = UTCDateTime(f"{p[3]}T{p[4]}").timestamp
+            base = dict(ref="ISCall", ref_id=p[0], etype=p[1], author=p[2], time=t, latitude=float(p[5]),
+                        longitude=float(p[6]), depth=float(p[7]) if p[7] else np.nan)
+        except Exception:
+            continue
+        mags = [(p[i], p[i + 1], p[i + 2]) for i in range(9, len(p) - 2, 3) if p[i + 2]]
+        if not mags:
+            rows.append(dict(base, mag_author="", magtype="", mag=np.nan))
+        for au, ty, v in mags:
+            try:
+                rows.append(dict(base, mag_author=au, magtype=ty, mag=float(v)))
+            except ValueError:
+                pass
+    return pd.DataFrame(rows)
+
+
 def footprint(stations, buffer_deg=0.3):
     from shapely.geometry import MultiPoint
 
@@ -143,6 +189,31 @@ def main(argv=None):
     md = ("### Reference-bulletin match\n\n" + summ.to_markdown(index=False, floatfmt=".2f") +
           "\n\n#### Every reference event\n\n" +
           m[[c for c in cols if c in m]].to_markdown(index=False, floatfmt=".2f") + "\n")
+    # --- all ISC magnitudes and event types, wide box (magnitude calibration + blast check)
+    wide = (box[0] - 3, box[1] + 3, box[2] - 5, box[3] + 5)
+    allm = fetch_isc_all_mags(cfg, args.start, args.end, wide, log)
+    if len(allm):
+        ev = allm.drop_duplicates("ref_id").copy()
+        ev["inside"] = contains(fp, points(ev.longitude.to_numpy(float), ev.latitude.to_numpy(float)))
+        mw = match_reference(cat, ev, dt_max=20.0, dist_max=200.0)
+        mw["origin_time"] = [str(UTCDateTime(x)) for x in mw.time]
+        mw.to_csv(path(cfg, "results") / f"validation_{args.tag}_iscwide.csv", index=False)
+        mm = allm.merge(mw.loc[mw.matched, ["ref_id", "event_id", "our_ml", "dist_km", "inside"]], on="ref_id")
+        mm = mm.dropna(subset=["mag", "our_ml"])
+        mm["key"] = mm.mag_author + " " + mm.magtype
+        mm["diff"] = mm.mag - mm.our_ml
+        mm.to_csv(path(cfg, "results") / f"magcal_{args.tag}.csv", index=False)
+        g = mm.groupby("key")["diff"].agg(n="size", median_ref_minus_ours="median", mad=lambda x: 1.4826 * np.median(np.abs(x - np.median(x))))
+        g = g[g.n >= 3].sort_values("n", ascending=False).reset_index()
+        types = mw.groupby(["etype", "inside"]).matched.agg(n="size", matched="sum").reset_index()
+        md += ("\n### ISC wide-area list (all magnitudes and event types)\n\n"
+               f"Box {wide[0]:g}–{wide[1]:g}°N, {wide[2]:g}–{wide[3]:g}°E: {len(ev)} ISC events, {int(ev.inside.sum())} inside the "
+               f"station footprint; matched to ours (±20 s, 200 km): {int(mw.matched.sum())} "
+               f"({int(mw[mw.inside].matched.sum())} of {int(mw.inside.sum())} inside).\n\n"
+               "ISC event types (se = earthquake, ke = known explosion, sm = suspected mine blast, kh/sh = known/suspected "
+               "chemical explosion):\n\n" + types.to_markdown(index=False) + "\n\n"
+               "Reference magnitude minus our ML, by agency and type (n ≥ 3):\n\n" +
+               (g.to_markdown(index=False, floatfmt=".2f") if len(g) else "(fewer than 3 matched events per type)") + "\n")
     (path(cfg, "results") / f"validation_{args.tag}_refs.md").write_text(md)
     log.info("\n%s", summ.to_string(index=False))
 
