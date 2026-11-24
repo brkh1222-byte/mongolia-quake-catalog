@@ -1,7 +1,7 @@
 # Mongolia Quake Catalog — Research Understanding & Plan
 
 > Mirror of the Claude Doc at https://claude.ai/artifact/Ta9P9hMq7pU7tCrsxM8vbf (as of 2026-11-24).
-> Sections marked *(in progress)* are still being researched.
+> The Claude Doc is the working copy; this file is a snapshot for the repository.
 
 # Part A — What we're studying
 
@@ -207,7 +207,42 @@ This is an observational, comparative design: one fixed pipeline, applied the sa
 
 **Data handling.** Filter QuakeScope and FDSN requests to network XL *and* 2012–2016: the XL code has been reused by other temporary networks. QuakeScope picks have a gap from 2014-05 to 2014-07, which is the break between deployments, so that is expected. The deployment has 112 stations but 114 station codes (HD20A and HD47A are extra codes; check in the metadata whether they are re-sited stations).
 
-## B3. Analysis plan and outcomes *(in progress)*
+## B3. Analysis plan and outcomes
+
+Every number in the paper comes with a bootstrap 95% interval, and every hypothesis is decided by whether that interval excludes the "no effect" value. The thresholds below are fixed before the full run.
+
+**Validation (does the catalogue work?)**
+
+- **Picks.** Compare with the ~500 hand picks. A pick matches if it is within 0.1 s (P) or 0.2 s (S). Report precision, recall and the residual spread for each phase and subarray.
+- **Events.** Compare with ISC/EMSC events inside the network. An event matches if its origin time is within 3 s and its epicentre within 20 km. Report the match rate and the location and magnitude offsets.
+- **Detection gain.** Compare ML vs our own STA/LTA on the same months: event counts above a common magnitude, and Mc for each.
+- **Hangay benchmark.** Compare counts, Mc and b against Meltzer et al. 2019, and the 12,912-event manual catalogue if shared.
+
+**Statistics for each hypothesis**
+
+| Quantity | Method | Rule fixed in advance |
+| --- | --- | --- |
+| Mc (H1) | Maximum curvature + 0.2, to match Meltzer; goodness-of-fit at 90% as a check; 1,000 bootstrap resamples | Per subarray and per deployment phase. Mapped on a grid where events are dense enough. |
+| b-value (H3) | Aki–Utsu with the binning correction; Shi & Bolt standard error; bootstrap jointly with Mc; b-positive as a robustness check | No b from fewer than 100 events above Mc. |
+| D90, D95 (H2a, H2b) | Depth-reliable events with M ≥ Mc. Each bootstrap draw resamples events *and* draws each depth from its NonLinLoc uncertainty. | The difference between regions is bootstrapped directly. At least 50 depth-reliable events per region, or no test. Report D90 and D95. |
+
+**Controls (could anything other than geology produce the result?)**
+
+1. **Velocity model.** Repeat every depth result with the 3-D model (GrowClust3D on Feng 2021). If the H2 conclusion flips, report it as not robust.
+2. **Network geometry.** The synthetic resolution test (B2 step 8) gives the depth bias and spread for each subarray. Compare the real D90 difference with the smallest difference XL can resolve.
+3. **Completeness.** Recompute D90 above a single common Mc for all regions, so that a better-covered region does not just see more small, shallow events.
+4. **Time.** Hangay (2012–14) and Khövsgöl/Gobi-Altai (2014–16) were recorded in different years. Check that no single large sequence dominates any region: report results with and without its biggest cluster.
+5. **Blasts.** Report b and D90 with and without blast-flagged events.
+
+**What each outcome means**
+
+| Outcome | What it would look like | Why it is still publishable |
+| --- | --- | --- |
+| Positive | Khövsgöl D90 deeper than Hangay, interval excludes 0, and robust to the 3-D model. Mc below 1.2. b above 0.71. | First same-method evidence that seismogenic depth follows the thermal and rift setting across central Mongolia. A Seismica research article. |
+| Negative (opposite direction) | Hangay as deep as or deeper than Khövsgöl; or the dome margin no deeper than the interior. | Contradicts the simple thermal picture of Bayasgalan et al. (2005). It supports the fluid or lithospheric-structure explanations (Dashdondog 2026; Huang & Zhao 2022). Arguably more interesting. Same article type. |
+| Null (can't tell) | Intervals overlap 0, because depths are poorly resolved or too few events. Or b stays near 0.71. | The catalogue is the main product, and it stands on its own. The resolution test states what depth differences a 2012–16-style array can and cannot resolve. That is useful for planning the next Mongolian deployment. Publish as a Seismica data-based or null-results report. A b-value that stays low after better completeness is itself a finding. |
+
+The design deliberately makes the catalogue the deliverable and the hypotheses the bonus. Every branch above ends in a paper.
 
 ## B4. Paper outline and target journal
 
@@ -261,4 +296,45 @@ The 20 December gate decides week 4. If the Hangay catalogue is not validated by
 | H100 or download delays | Medium | Medium | Run the Hangay subarray first. Every script runs on a CPU slice. QuakeScope picks are a fallback input. |
 | Credibility as an independent researcher | Medium | Medium | ORCID, an adviser at IAG or a university, public code and data, a preprint on EarthArXiv. |
 
-## Suggested changes to PROPOSAL.md / TASKS.md *(in progress)*
+## Suggested changes to PROPOSAL.md / TASKS.md
+
+These are suggestions only; neither file has been edited.
+
+**PROPOSAL.md**
+
+1. **§1 and §3, gap statement.** Replace "Only a preliminary STA/LTA catalog … was ever published" with: "No catalogue of XL data has been publicly released, and the Khövsgöl and Gobi-Altai subarrays have no peer-reviewed catalogue." Add these to the prior-work table: Dashdondog et al. 2020, 2024 and 2026; Welkey et al. 2019; Scott et al. 2017; Manceau et al. 2026; Munkhbaatar & Munkhuu 2025.
+2. **Station count.** Change "114 broadband seismometers" to "112 stations (114 station codes)", and fix the HD/HV/AT code ranges.
+3. **The 7,680 events** were a velocity-estimate set including regional events, not the catalogue size, and the catalogue was analyst-reviewed.
+4. **§2, data access.** Keep MJ as "not distributable". Do not group OU with it; its FDSN page has no such statement.
+5. **§4, research questions.** Replace with the main question and H1–H3 from B1. Move fault activity and regional b-values to exploratory.
+6. **§6, velocity model.** Replace "Vp 6.4, Vs 3.6, Moho ~50 km" with the Dashdondog et al. 2020 minimum 1-D model plus station terms, and Feng 2021 as the 3-D check.
+7. **§6, magnitudes.** Use the Ganbat & Munkhuu 2026 formula, not a calibration to ISC/EMSC.
+8. **§6, quality control.** Add the STA/LTA baseline, the depth-reliability rule, the synthetic resolution test and the hand-picked ground-truth set.
+9. **§8, journal.** Change "Seismica as a Report" to "Seismica research article", with the data-based or null-results report as fallback. Drop *SRL* (its Data Mine column excludes hypothesis tests).
+10. **§9, risks.** The scoop risk is now concrete (an active Lehigh/IAG Hangay programme). Add Dashdondog (IAG) as a contact next to Meltzer.
+11. **§11, references.** Huang & Zhao (two authors). Ni et al. 2025 with its Seismica title and DOI. Add volumes and pages for all. Correct the ZJ start date to 2018-05-31.
+
+**TASKS.md**
+
+- [ ] **New T0.3** Pre-register before the full run: H1–H3, `config/regions.geojson`, the depth-reliability rule, minimum event counts.
+- [ ] **New T0.4** Email A. Meltzer and M. Dashdondog: say what you plan, ask about the 12,912-event catalogue, offer collaboration.
+- [ ] **T0.2** Expect 112 stations / 114 codes. Filter network XL to 2012–2016 (the code is reused). Report station spacing.
+- [ ] **New T2.0** Hand-pick ~100 events (~500 picks) across all subarrays as ground truth.
+- [ ] **T2.1** Check each model's sampling rate, normalisation and component order. Set thresholds on T2.0, not defaults. Use a small window step.
+- [ ] **T2.3** Cite QuakeScope as Ni et al. 2025 (Seismica). Expect the 2014-05 to 2014-07 gap.
+- [ ] **New T2.4** STA/LTA baseline on the same months.
+- [ ] **T3.1** PyOcto as the primary associator; GaMMA as a cross-check only.
+- [ ] **T3.2** Start from the Dashdondog 2020 1-D model; add station terms. Output nearest-station distance ÷ depth, gap and S-pick flags.
+- [ ] **T3.3** Also validate against the Meltzer 2019 numbers. Pick and event matching rules as in B3.
+- [ ] **New T3.4** Synthetic depth-resolution test for each subarray.
+- [ ] **T4.2** Add a GrowClust3D run on the Feng 2021 model.
+- [ ] **T4.3** Use the Ganbat & Munkhuu 2026 ML formula with station terms.
+- [ ] **T5.4 → before T5.1** Run blast screening before Mc and b. Use UTC+8. Flag, don't delete.
+- [ ] **T5.1** Mc: max curvature + 0.2 and goodness-of-fit, bootstrapped. b: Aki–Utsu with binning correction, b-positive check, no b from fewer than 100 events.
+- [ ] **T5.2** D90 and D95 with bootstrap + Monte Carlo over depths; both velocity models; common-Mc control.
+- [ ] **T6.1** Threshold 9× MAD; measure false detections on time-reversed data.
+- [ ] **T7.1** Release picks, region polygons and quality flags with the catalogue on Zenodo; cite the XL network DOI.
+
+---
+
+*How this was made.* Literature searches and citation checks were done with AI research assistants (Claude), against Crossref, DataCite, OpenAlex, NASA ADS and publisher pages. Items read only as metadata are marked as such. Open and read every source yourself before citing it in the paper.
