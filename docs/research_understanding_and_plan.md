@@ -42,7 +42,30 @@ The two formulas you will use most are the Gutenberg–Richter law and Aki's max
 
 ## A4. Methods, tools and pitfalls *(in progress)*
 
-## A5. Verified references *(in progress)*
+## A5. Verified references (PROPOSAL.md §11)
+
+All 12 DOIs in PROPOSAL.md resolve to the right paper, and none is fabricated. Three entries need real fixes: Huang & Zhao has the wrong author list, the QuakeScope paper has the wrong title and venue, and the Meltzer claims are overstated. Each entry was checked against Crossref, DataCite, the publisher page or NASA ADS.
+
+| # | Correct reference (APA) | Status | What to fix |
+| --- | --- | --- | --- |
+| 1 | Meltzer, A., Stachnik, J. C., Sodnomsambuu, D., Munkhuu, U., Tsagaan, B., Dashdondog, M., & Russo, R. (2019). The Central Mongolia Seismic Experiment: Multiple applications of temporary broadband seismic arrays. *Seismological Research Letters, 90*(3), 1364–1376. [doi:10.1785/0220180360](https://doi.org/10.1785/0220180360) | Fix claims | Paper says **112** stations (72 HD, 26 HV, 14 AT); 114 is the number of station codes in metadata. "7,680 events" were used for a velocity estimate and include regional events; they are not the catalogue size. The catalogue was analyst-reviewed, not pure STA/LTA. Mc 1.2 and b 0.71 are correct. |
+| 2 | Woollam, J., Münchmeyer, J., Tilmann, F., et al. (2022). SeisBench—A toolbox for machine learning in seismology. *SRL, 93*(3), 1695–1709. [doi:10.1785/0220210324](https://doi.org/10.1785/0220210324) | Correct | Add volume and pages. |
+| 3 | Zhu, W., & Beroza, G. C. (2019). PhaseNet: A deep-neural-network-based seismic arrival-time picking method. *GJI, 216*(1), 261–273. [doi:10.1093/gji/ggy423](https://doi.org/10.1093/gji/ggy423) | Correct | Add issue and pages. |
+| 4 | Mousavi, S. M., Ellsworth, W. L., Zhu, W., Chuang, L. Y., & Beroza, G. C. (2020). Earthquake transformer—An attentive deep-learning model for simultaneous earthquake detection and phase picking. *Nature Communications, 11*, 3952. [doi:10.1038/s41467-020-17591-w](https://doi.org/10.1038/s41467-020-17591-w) | Correct | Add article number. |
+| 5 | Münchmeyer, J. (2024). PyOcto: A high-throughput seismic phase associator. *Seismica, 3*(1). [doi:10.26443/seismica.v3i1.1130](https://doi.org/10.26443/seismica.v3i1.1130) | Correct | — |
+| 6 | Zhu, W., McBrearty, I. W., Mousavi, S. M., Ellsworth, W. L., & Beroza, G. C. (2022). Earthquake phase association using a Bayesian Gaussian mixture model. *JGR: Solid Earth, 127*(5), e2021JB023249. [doi:10.1029/2021JB023249](https://doi.org/10.1029/2021JB023249) | Correct | Journal is *JGR: Solid Earth*. |
+| 7 | Trugman, D. T., & Shearer, P. M. (2017). GrowClust: A hierarchical clustering algorithm for relative earthquake relocation… *SRL, 88*(2A), 379–391. [doi:10.1785/0220160188](https://doi.org/10.1785/0220160188) | Correct | Add volume and pages. |
+| 8 | Beaucé, E., Frank, W. B., & Romanenko, A. (2018). Fast matched filter (FMF): An efficient seismic matched-filter search for both CPU and GPU architectures. *SRL, 89*(1), 165–172. [doi:10.1785/0220170181](https://doi.org/10.1785/0220170181) | Correct | Add volume and pages. |
+| 9 | Ni, Y., Denolle, M. A., Thomas, A. M., Hamilton, A., Münchmeyer, J., Wang, Y., Bachelot, L., Trabant, C., & Mencin, D. (2025). A global-scale database of seismic phases from cloud-based picking at petabyte scale. *Seismica, 4*(2). [doi:10.26443/seismica.v4i2.1738](https://doi.org/10.26443/seismica.v4i2.1738) | **Wrong title/venue** | Cite the Seismica DOI, not only arXiv:2505.18874. "QuakeScope" is the data portal's name, not the paper title. Releases picks only, no events. XL picks have a gap 2014-05 to 2014-07. The XL code is reused by other networks, so filter by time and station. |
+| 10 | Dashdondog, M., Dorjsuren, A., & Sereenen, O. (2026). Precise earthquake relocation along the Egiin Davaa fault, Hangay Dome, Central Mongolia. *Proceedings of the Mongolian Academy of Sciences, 66*(01), 27–37. [doi:10.5564/pmas.v66i01.5340](https://doi.org/10.5564/pmas.v66i01.5340) | Correct | 289 events analysed, 253 relocated with HypoDD, from XL 2012–2014. |
+| 11 | Huang, Z., & Zhao, D. (2022). Seismotectonics of Mongolia and Baikal rift zone controlled by lithospheric structures. *GRL, 49*(15), e2022GL099525. [doi:10.1029/2022GL099525](https://doi.org/10.1029/2022GL099525) | **Wrong authors** | Two authors, not "et al." It argues a high-velocity ring shields the Hangay, giving weak seismicity under the dome. That is directly relevant to H2. |
+| 12 | Zelenin, E., Bachmanov, D., Garipova, S., Trifonov, V., & Kozhurin, A. (2022). The Active Faults of Eurasia Database (AFEAD). *ESSD, 14*(10), 4489–4503. [doi:10.5194/essd-14-4489-2022](https://doi.org/10.5194/essd-14-4489-2022) | Correct | Add full title and pages. |
+| — | Meltzer, A. (2012). *Central Mongolia Seismic Experiment* [Data set]. FDSN. [doi:10.7914/SN/XL_2012](https://doi.org/10.7914/SN/XL_2012) | Correct | Operator: Lehigh University. |
+| — | Meltzer, A. (2018). *Mongolia Fault Zone Studies* [Data set]. FDSN. [doi:10.7914/SN/ZJ_2018](https://doi.org/10.7914/SN/ZJ_2018) | Minor | 22 short-period stations BU01–BU22, 2018-05-31 to 2018-09-26. |
+| — | Scott, A. M., Meltzer, A., Stachnik, J., Russo, R., Munkhuu, U., & Tsagaan, B. (2017). *Crustal structure of Khövsgöl, Mongolia* (Abstract T23E-0660). AGU Fall Meeting. [ADS](https://ui.adsabs.harvard.edu/abs/2017AGUFM.T23E0660S/abstract) | Correct | Says >2,100 events *detected* (not located); largest ML 5.2. |
+| — | FDSN network MJ, Mongolian National Network, IAG ([FDSN page](https://www.fdsn.org/networks/detail/MJ/)) | Correct | Page states data are prohibited from distribution to third parties. The OU page has **no** such statement, so do not group OU with MJ. |
+
+**Found during the check, not yet in PROPOSAL.md.** Welkey et al. (2019), an ESSOAr preprint ([doi:10.1002/essoar.10500539.1](https://doi.org/10.1002/essoar.10500539.1)), and a 2019 Lehigh dissertation by Welkey appear to locate all 7,680 Hangay events with a local 1-D model. Both were seen only as metadata. Open and read them before claiming that "only a preliminary catalogue exists" (see A3).
 
 # Part B — How we'll study it
 
