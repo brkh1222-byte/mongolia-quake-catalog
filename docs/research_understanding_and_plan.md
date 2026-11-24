@@ -121,7 +121,25 @@ The ML pipeline itself is *not* new. Manceau et al. (2026) used the same tools i
 
 **What this means for the plan.** Do not write "only a preliminary catalogue exists". Write "no catalogue of XL data has been publicly released, and Khövsgöl and Gobi-Altai have no peer-reviewed catalogue." Contact A. Meltzer (Lehigh) and M. Dashdondog (IAG) in week 1. They may share the 12,912-event catalogue as ground truth, and a collaboration beats a race.
 
-## A4. Methods, tools and pitfalls *(in progress)*
+## A4. Methods, tools and their pitfalls
+
+The tools in PROPOSAL.md are the field standard, and published benchmarks back each one. The risk is not the choice of tools. It is running them with default settings that were tuned on California or Italy. The table lists, for each step, the evidence and the trap.
+
+| Step | Standard tool | What the evidence says | Main pitfall → what we do |
+| --- | --- | --- | --- |
+| Picking | PhaseNet, EQTransformer via SeisBench | Pickers transfer between regions with only mild loss ([Münchmeyer et al. 2022](https://doi.org/10.1029/2021JB023499)), but performance drops in China ([Zhu, Li & Fang 2023](https://doi.org/10.1016/j.eqs.2023.03.001)). | Default thresholds were tuned in-domain: SeisBench PhaseNet "stead" uses P 0.27, "instance" uses P 0.09. Output scores are not reliability ([Park et al. 2024](https://doi.org/10.1785/0320230054)). → Calibrate thresholds on hand-picked XL data, and check each model's expected sampling rate and normalisation. |
+| Association | PyOcto (GaMMA, REAL) | In a synthetic benchmark PyOcto stays robust (F1 > 0.8) under noise; GaMMA struggles with noisy, dense data ([Puente Huerta et al. 2025](https://doi.org/10.26443/seismica.v4i2.1559)). | False picks and events outside the network create fake events. → Tune pick threshold and minimum picks together; check events near the array edge. |
+| Location | NonLinLoc | Source-specific station terms suit sparse networks ([Lomax & Savvaidis 2022](https://doi.org/10.1029/2021JB023190)). A poor starting model leaves hidden artefacts ([Kissling et al. 1994](https://doi.org/10.1029/93JB03138)). | **Depth needs a station within ~1.4× the depth, with a correct S pick; one bad S pick ruins depth and its error bar** ([Gomberg et al. 1990](https://doi.org/10.1785/BSSA08006A1605)). Formal errors are too small ([Bondár et al. 2004](https://doi.org/10.1111/j.1365-246X.2004.02070.x)). → Flag every event by nearest-station distance ÷ depth and azimuthal gap. |
+| Relocation | Cross-correlation + GrowClust (HypoDD) | GrowClust is robust for large catalogues ([Trugman & Shearer 2017](https://doi.org/10.1785/0220160188)); GrowClust3D allows a 3-D model ([Trugman et al. 2023](https://doi.org/10.1785/0220220193)). | Relative relocation sharpens shapes but cannot fix the absolute depth of a whole cluster. → Treat D90 as an absolute-location result; test it with a second velocity model. |
+| Magnitude | Local ML with a regional distance correction | Distance corrections differ by region by up to 0.4 units ([Bindi et al. 2019](https://doi.org/10.1093/gji/ggz178)). Very close stations read ML up to 1 unit high ([Luckett et al. 2019](https://doi.org/10.1093/gji/ggy484)). | For small events ML scales like 1.5×Mw, which bends the b-value ([Deichmann 2017](https://doi.org/10.1785/0120160318)). → Use the Mongolian ML formula ([Ganbat & Munkhuu 2026](https://doi.org/10.5800/gt-2026-17-1-0877)) with station terms; check against ISC/EMSC. |
+| Mc and b-value | Max curvature, goodness-of-fit; Aki–Utsu b with bootstrap | Mc can vary by 1 unit over < 50 km ([Wiemer & Wyss 2000](https://doi.org/10.1785/0119990114)). Bootstrap Mc and b together ([Woessner & Wiemer 2005](https://doi.org/10.1785/0120040007)). | b-value "changes" are easy to fake through small samples, binning and patchy completeness ([Marzocchi et al. 2020](https://doi.org/10.1093/gji/ggz541); [Herrmann & Marzocchi 2021](https://doi.org/10.1785/0220200337)). Small catalogues inflate b ([Geffers et al. 2022](https://doi.org/10.1093/gji/ggac028)). → Minimum event count; b-positive as a check ([van der Elst 2021](https://doi.org/10.1029/2020JB021027)). |
+| Seismogenic depth | D90 / D95 of depth distribution | D95 tracks heat flow and a ~300–350 °C isotherm in California ([Zuza & Cao 2020](https://doi.org/10.1016/j.tecto.2020.228426)). | Extreme percentiles are noisy; incomplete small events bias depths. → Use only M ≥ Mc; bootstrap plus Monte Carlo over location errors. Do not convert depth to temperature where fluids are present (Tsenkher hot spring). |
+| Template matching | EQcorrscan + fast_matched_filter | ~10× more events in Southern California ([Ross et al. 2019](https://doi.org/10.1126/science.aaw6888)). | The threshold is a convention: 8–9× MAD ([Shelly et al. 2007](https://doi.org/10.1038/nature05666)) or 9.5–12× MAD (QTM). It only finds events near templates. → State the threshold; measure false detections on time-reversed data. |
+| Blast screening | Day/night ratio maps; P/S amplitude ratios | Day/night mapping removed 20% of a Swiss catalogue ([Wiemer & Baer 2000](https://doi.org/10.1785/0119990104)). Blasts bias b ([Gulia & Gasperini 2021](https://doi.org/10.1785/0220210080)). | P/S ratios weaken with few stations ([Wang et al. 2020](https://doi.org/10.1029/2020JB020338)). Mongolia is UTC+8, so convert times before computing "daytime". → Screen before any b-value work. |
+
+**The one pitfall that decides this project:** detection-gain claims. The "10× more events" figures compare ML catalogues against *routine network catalogues*, not against a tuned detector on the same stations ([Tan et al. 2021](https://doi.org/10.1785/0320210001); [Zhu et al. 2023](https://doi.org/10.1093/gji/ggac355)). Gains are also uneven in space ([Chung et al. 2026, preprint](https://arxiv.org/abs/2602.09792)). To claim a gain on XL, we run our own STA/LTA baseline on the same data.
+
+The closest model study is [Jiang et al. 2022](https://doi.org/10.1785/0320210041): an ML catalogue from 5 years of a *temporary* deployment in the Banda Arc, published in *The Seismic Record*. Read it before writing the methods section.
 
 ## A5. Verified references (PROPOSAL.md §11)
 
@@ -169,7 +187,25 @@ The four questions in PROPOSAL.md §4 become one main question, with one catalog
 
 **Fix the rules before looking.** Draw the region polygons in `config/regions.geojson` before computing any depth or b-value: Hangay interior, Hangay margin, Khövsgöl, Gobi-Altai. Freeze the depth-quality filter too. Commit both, with H1–H3, to git (or an [OSF](https://osf.io) pre-registration) before the full run. Reviewers trust a result you could not have tuned.
 
-## B2. Study design and methods *(in progress)*
+## B2. Study design and methods
+
+This is an observational, comparative design: one fixed pipeline, applied the same way to three tectonic regions, so that differences reflect the Earth rather than the method. The pipeline in PROPOSAL.md §6 stays. Seven changes make it defensible; they are marked **new**.
+
+| Step | Choice | Why |
+| --- | --- | --- |
+| 0. Ground truth (**new**) | Hand-pick ~100 events (~500 P and S picks) spread over all three subarrays and both seasons. | No reference catalogue exists for XL. This set calibrates pick thresholds and measures pick precision and recall. |
+| 1. Picking | SeisBench ensemble: PhaseNet + EQTransformer, several weights. Thresholds set on the hand-picked set, not defaults. Small window step with averaged outputs. | Default thresholds differ 3× between weights and were tuned elsewhere. Averaging over window positions fixes pick inconsistency ([Park et al. 2023](https://doi.org/10.1785/0220230003)). Fine-tune a picker only if recall on the hand-picked set is poor ([Lapins et al. 2021](https://doi.org/10.1029/2021JB021910)). |
+| 1b. Baseline (**new**) | A classic STA/LTA detector run on the same stations and months. | The only fair way to measure how much ML adds (A4). |
+| 2. Association | PyOcto, with the 1-D model from step 3. GaMMA only as a cross-check. | Most robust in the 2025 benchmark, and fast. |
+| 3. Location (**changed**) | NonLinLoc. The starting model is the South Hangay minimum 1-D model of [Dashdondog et al. 2020](https://doi.org/10.5564/pmas.v60i2.1353), refined per subarray with station terms (VELEST or NLL-SSST). | PROPOSAL.md's single Vp 6.4 / Vs 3.6 layer is too crude for depth work. A published local model is better, and station terms absorb 3-D effects. |
+| 3b. Depth quality (**new**) | For each event, record nearest-station distance ÷ depth, azimuthal gap, and whether that station has an S pick. "Depth-reliable" means ratio ≤ 1.4 with an S pick, frozen before analysis. | The Gomberg rule (A4). D90 uses only depth-reliable events. |
+| 4. Relocation | GPU cross-correlation differential times, then GrowClust. Repeat with GrowClust3D on the [Feng 2021](https://doi.org/10.1029/2020JB021161) 3-D model. | The second model is the control for velocity-model bias in depth. |
+| 5. Magnitude (**changed**) | ML from the [Ganbat & Munkhuu 2026](https://doi.org/10.5800/gt-2026-17-1-0877) Mongolian formula, plus station terms. Check the offset against ISC/EMSC events of the same magnitude type. | Avoids deriving a new scale in 4 weeks. Regressing ML on ISC body-wave magnitudes would mix magnitude types. |
+| 6. Blast screening (**moved earlier**) | Day/night ratio maps in local time (UTC+8), known mine sites, P/S ratios where ≥ 8 stations record. Flag events; do not delete them. | Must come before any b-value. Flagging keeps the catalogue honest and reusable. |
+| 7. Template matching (stretch) | EQcorrscan + fast_matched_filter. Threshold 9× MAD. False detections measured on time-reversed data. | Adds small events near known seismicity; useful for H2a if Khövsgöl and Gobi-Altai are thin. |
+| 8. Resolution test (**new**) | Put synthetic events at known depths (5–40 km) under each subarray. Make their picks with real noise levels, then locate them with the real pipeline. | Tells us the smallest D90 difference XL can detect. Without this, a null H2 result cannot be interpreted. |
+
+**Data handling.** Filter QuakeScope and FDSN requests to network XL *and* 2012–2016: the XL code has been reused by other temporary networks. QuakeScope picks have a gap from 2014-05 to 2014-07, which is the break between deployments, so that is expected. The deployment has 112 stations but 114 station codes (HD20A and HD47A are extra codes; check in the metadata whether they are re-sited stations).
 
 ## B3. Analysis plan and outcomes *(in progress)*
 
@@ -218,7 +254,7 @@ The 20 December gate decides week 4. If the Hangay catalogue is not validated by
 | Risk | Likelihood | Impact | Mitigation |
 | --- | --- | --- | --- |
 | Lehigh/IAG publish an overlapping Hangay catalogue | Medium | High | Email Meltzer and Dashdondog in week 1 and offer to collaborate. Lead with Khövsgöl, Gobi-Altai and the same-method comparison, which nobody has done. |
-| Depths are poorly resolved (stations ~20–60 km apart) | High | High for H2 | Use only events with a nearby station and small depth errors (rule frozen in advance). Re-locate with a second velocity model (Feng 2021). If D90 is still unresolved, publish as a null-results report. |
+| Depths are poorly resolved (stations are tens of km apart; measure the spacing in T0.2) | High | High for H2 | Use only events with a nearby station and small depth errors (rule frozen in advance). Re-locate with a second velocity model (Feng 2021). If D90 is still unresolved, publish as a null-results report. |
 | Too few Khövsgöl / Gobi-Altai events for D90 or b | Medium | High for H2a | Bootstrap all estimates and report wide intervals honestly. Template matching adds events. State the minimum event count in advance. |
 | Pretrained pickers misfire on Mongolian data | Medium | Medium | Use an ensemble. Hand-check 100 events. Compare with QuakeScope picks and ISC/EMSC events. |
 | Quarry and mine blasts in the catalogue | Medium | Medium | Day/night ratio, known mine sites, waveform checks. Report the catalogue with blasts *flagged*, not deleted. |
