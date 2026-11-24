@@ -150,7 +150,24 @@ All 12 DOIs in PROPOSAL.md resolve to the right paper, and none is fabricated. T
 
 # Part B — How we'll study it
 
-## B1. Research question and hypotheses *(in progress)*
+## B1. Research question and hypotheses
+
+The four questions in PROPOSAL.md §4 become one main question, with one catalogue deliverable and three tests.
+
+> **Main question.** With one uniform ML catalogue of all XL data (2012–2016), how do the depth extent and the size distribution of small earthquakes differ between the Hangay Dome, the Khövsgöl rift and the Gobi-Altai?
+
+**Deliverable D1: the catalogue.** A public, relocated catalogue for all three subarrays, with per-event uncertainties and per-subarray Mc. Success means it recovers at least 90% of ISC/EMSC events inside the network. For the Hangay, it must also reach an Mc lower than Meltzer et al.'s 1.2.
+
+| # | Hypothesis | Prediction we can check | Grounded in |
+| --- | --- | --- | --- |
+| H1 | The ML catalogue is more complete than the preliminary Hangay catalogue. | Hangay Mc ≤ 1.0, with the bootstrap 95% interval below 1.2. Event count above Mc 1.2 at least equal to Meltzer's for the same months. | Meltzer 2019; detection gains in ML catalogues (A4) |
+| H2a | Earthquakes under the Khövsgöl rift go deeper than under the Hangay. | D90(Khövsgöl) − D90(Hangay) > 0, and its bootstrap 95% interval excludes 0. Expected D90 is about 20 km for the Hangay and 25 km or more for Khövsgöl. | Bayasgalan 2005; Déverchère 2001 |
+| H2b | Within the Hangay, the dome margins go deeper than the dome interior. | D90(margin) − D90(interior) > 0, with the 95% interval excluding 0. | Sloan 2011; Comeau 2018 |
+| H3 | The low Hangay b-value (0.71) is an incompleteness artefact. | Hangay b at our Mc is higher than 0.71, with a 95% interval that excludes 0.71. | Meltzer 2019's own caveat |
+
+**Exploratory (reported, not tested).** Which AFEAD faults carry seismicity above Mc. Whether the dome interior is quieter per km² than the fast ring around it (Huang & Zhao 2022). b-value differences between regions.
+
+**Fix the rules before looking.** Draw the region polygons in `config/regions.geojson` before computing any depth or b-value: Hangay interior, Hangay margin, Khövsgöl, Gobi-Altai. Freeze the depth-quality filter too. Commit both, with H1–H3, to git (or an [OSF](https://osf.io) pre-registration) before the full run. Reviewers trust a result you could not have tuned.
 
 ## B2. Study design and methods *(in progress)*
 
@@ -177,6 +194,35 @@ All 12 DOIs in PROPOSAL.md resolve to the right paper, and none is fabricated. T
 
 That is exactly 10 figures. If one needs to go, merge Figs. 8 and 9.
 
-## B5. Timeline and risks *(in progress)*
+## B5. Timeline and risks
+
+Four weeks is enough for the minimum publishable result: a relocated, validated Hangay catalogue with H1 and H3 tested. Khövsgöl and Gobi-Altai (needed for H2a) come next, and template matching is a stretch goal. The dates assume you start on Monday 30 November 2026; shift them as needed.
+
+| Task | Dates (2026) |
+| --- | --- |
+| Setup + station metadata | Nov 30 – Dec 2 |
+| Email Meltzer and IAG | Nov 30 (milestone) |
+| Bulk download | Nov 30 – Dec 9 |
+| Pilot month, end to end | Dec 2 – Dec 6 |
+| Freeze regions + H1–H3 | Dec 6 (milestone) |
+| Full picking on H100 | Dec 7 – Dec 13 |
+| Associate + locate | Dec 10 – Dec 16 |
+| Relocate + magnitudes | Dec 14 – Dec 18 |
+| Mc, b, D90, blast filter | Dec 16 – Dec 20 |
+| **Gate: Hangay validated** | **Dec 20 (milestone)** |
+| Stretch: template matching | Dec 21 – Dec 24 |
+| Figures, release, draft | Dec 21 – Dec 27 |
+
+The 20 December gate decides week 4. If the Hangay catalogue is not validated by then, drop template matching and spend week 4 on fixing the catalogue and writing. Writing the paper yourself will likely run past week 4. Plan for submission in January, after an adviser has read the draft.
+
+| Risk | Likelihood | Impact | Mitigation |
+| --- | --- | --- | --- |
+| Lehigh/IAG publish an overlapping Hangay catalogue | Medium | High | Email Meltzer and Dashdondog in week 1 and offer to collaborate. Lead with Khövsgöl, Gobi-Altai and the same-method comparison, which nobody has done. |
+| Depths are poorly resolved (stations ~20–60 km apart) | High | High for H2 | Use only events with a nearby station and small depth errors (rule frozen in advance). Re-locate with a second velocity model (Feng 2021). If D90 is still unresolved, publish as a null-results report. |
+| Too few Khövsgöl / Gobi-Altai events for D90 or b | Medium | High for H2a | Bootstrap all estimates and report wide intervals honestly. Template matching adds events. State the minimum event count in advance. |
+| Pretrained pickers misfire on Mongolian data | Medium | Medium | Use an ensemble. Hand-check 100 events. Compare with QuakeScope picks and ISC/EMSC events. |
+| Quarry and mine blasts in the catalogue | Medium | Medium | Day/night ratio, known mine sites, waveform checks. Report the catalogue with blasts *flagged*, not deleted. |
+| H100 or download delays | Medium | Medium | Run the Hangay subarray first. Every script runs on a CPU slice. QuakeScope picks are a fallback input. |
+| Credibility as an independent researcher | Medium | Medium | ORCID, an adviser at IAG or a university, public code and data, a preprint on EarthArXiv. |
 
 ## Suggested changes to PROPOSAL.md / TASKS.md *(in progress)*
