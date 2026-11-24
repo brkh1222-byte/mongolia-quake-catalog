@@ -65,6 +65,49 @@ class TwoLayer:
         return np.minimum(direct, head)
 
 
+class GridModel:
+    """General layered 1-D model: travel-time tables from the fast-marching
+    eikonal solver of pyrocko (the same solver PyOcto uses), for a receiver at
+    sea level. Sources are at depth z >= 0 below sea level. The station
+    elevation e (km) adds a vertical static e / v_top. Times between grid nodes
+    are bilinearly interpolated (grid 0.5 km)."""
+
+    def __init__(self, cfg, delta=0.5, xmax=800.0, zmax=80.0):
+        from pyrocko.modelling import eikonal
+        from scipy.interpolate import RegularGridInterpolator
+
+        lay = cfg["velocity_model"]["layers"]
+        nx, nz = int(xmax / delta) + 1, int(zmax / delta) + 1
+        z = np.arange(nz) * delta
+        x = np.arange(nx) * delta
+        self.v_top, self.interp = {}, {}
+        for ph, key in (("P", "vp"), ("S", "vs")):
+            v = np.empty(nz)
+            for i, L in enumerate(lay):  # constant-velocity layers (steps)
+                v[z >= L["depth"]] = L[key]
+            v[z < max(lay[0]["depth"], 0)] = lay[0][key]
+            speeds = np.repeat(v[None, :], nx, axis=0)
+            times = -np.ones_like(speeds)
+            times[0, 0] = 0.0
+            eikonal.eikonal_solver_fmm_cartesian(speeds, times, delta)
+            self.interp[ph] = RegularGridInterpolator((x, z), times, bounds_error=False, fill_value=None)
+            self.v_top[ph] = float(v[0])
+        self.zmax = zmax
+
+    def tt(self, phase, x, z, e):
+        x = np.atleast_1d(np.asarray(x, float))
+        zz = np.clip(np.broadcast_to(np.asarray(z, float), x.shape), 0.0, self.zmax)
+        t = self.interp[phase](np.c_[np.abs(x), zz]) + np.asarray(e) / self.v_top[phase]
+        return t if t.size > 1 else float(t[0])
+
+
+def make_model(cfg):
+    lay = cfg["velocity_model"]["layers"]
+    if len(lay) == 2 and cfg["velocity_model"].get("kind", "analytic") == "analytic":
+        return TwoLayer(cfg)
+    return GridModel(cfg)
+
+
 def local_proj(lat0, lon0):
     return Proj(proj="aeqd", lat_0=lat0, lon_0=lon0, datum="WGS84", units="km")
 
@@ -107,7 +150,8 @@ def locate_event(model, ex0, sx, sy, se, ph, tobs, w, zbounds=(-3.0, 60.0)):
 
 def locate_catalog(cfg, events: pd.DataFrame, assignments: pd.DataFrame, stations: pd.DataFrame,
                    log=None):
-    model = TwoLayer(cfg)
+    model = make_model(cfg)
+    zb = (-3.0, 60.0) if isinstance(model, TwoLayer) else (0.0, 60.0)
     lat0, lon0 = stations.lat.mean(), stations.lon.mean()
     proj = local_proj(lat0, lon0)
     sxy = {r.station: (*proj(r.lon, r.lat), r.elev / 1000.0) for r in stations.itertuples()}
@@ -125,7 +169,7 @@ def locate_catalog(cfg, events: pd.DataFrame, assignments: pd.DataFrame, station
         w = (a["prob"].to_numpy() if "prob" in a else np.ones(len(a))).astype(float)
         w = np.where(ph == "S", 0.5 * w, w)  # S picks are less precise
         ex, ey = proj(ev.longitude, ev.latitude)
-        sol, res = locate_event(model, (ex, ey, ev.z, 0.0), sx, sy, se, ph, tobs, w)
+        sol, res = locate_event(model, (ex, ey, ev.z, 0.0), sx, sy, se, ph, tobs, w, zbounds=zb)
         lon, lat = proj(sol["x"], sol["y"], inverse=True)
         dist = np.hypot(sx - sol["x"], sy - sol["y"])
         az = np.degrees(np.arctan2(sx - sol["x"], sy - sol["y"])) % 360
@@ -179,8 +223,14 @@ def quality_flags(cat: pd.DataFrame, cfg) -> pd.DataFrame:
 def main(argv=None):
     ap = base_parser(__doc__)
     ap.add_argument("--tag", required=True)
+    ap.add_argument("--vmodel", default=None,
+                    help="YAML with an alternative velocity_model (sensitivity test); output gets a suffix")
+    ap.add_argument("--suffix", default="")
     args = ap.parse_args(argv)
     cfg = load_config(args.config)
+    if args.vmodel:
+        import yaml
+        cfg["velocity_model"] = yaml.safe_load(open(args.vmodel))["velocity_model"]
     log = get_logger("locate")
     d = path(cfg, "catalogs") / args.tag
     events = pd.read_csv(d / "events_pyocto.csv")
@@ -188,8 +238,8 @@ def main(argv=None):
     stations = select_stations(cfg, args.stations or cfg["pilot"]["subarray"], args.start, args.end)
     cat, picks = locate_catalog(cfg, events, assignments, stations, log)
     cat = quality_flags(cat, cfg)
-    cat.to_csv(d / "events.csv", index=False)
-    picks.to_parquet(d / "picks.parquet", index=False)
+    cat.to_csv(d / f"events{args.suffix}.csv", index=False)
+    picks.to_parquet(d / f"picks{args.suffix}.parquet", index=False)
     log.info("quality classes: %s", cat.quality.value_counts().to_dict())
 
 

@@ -34,10 +34,27 @@ from obspy import UTCDateTime
 from common import to_epoch, base_parser, days, get_logger, load_config, path, select_stations
 
 
+def step_points(layers, zmax=200.0) -> pd.DataFrame:
+    """Turn a layer list (top depth, constant vp/vs) into the point list PyOcto
+    expects. PyOcto interpolates *linearly* between consecutive points, so each
+    layer is written as two points (top and bottom) with the same velocity; the
+    interface is then a step, as in the locator. Depths above sea level are
+    clipped to 0 (PyOcto's grid starts at 0)."""
+    pts = []
+    for i, L in enumerate(layers):
+        top = max(L["depth"], 0.0)
+        bot = layers[i + 1]["depth"] if i + 1 < len(layers) else zmax
+        if bot <= 0:
+            continue
+        pts.append(dict(depth=top, vp=L["vp"], vs=L["vs"]))
+        pts.append(dict(depth=bot, vp=L["vp"], vs=L["vs"]))
+    return pd.DataFrame(pts)
+
+
 def velocity_model(cfg, tolerance=2.0):
     import pyocto
 
-    layers = pd.DataFrame(cfg["velocity_model"]["layers"])
+    layers = step_points(cfg["velocity_model"]["layers"])
     tag = "_".join(f"{r.depth:g}-{r.vp:g}-{r.vs:g}" for r in layers.itertuples())
     f = path(cfg, "meta") / f"pyocto_vmodel_{tag}.bin"
     if not f.exists():
