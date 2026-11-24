@@ -90,3 +90,41 @@ def test_ml_definition():
     paz = wa_paz()
     assert abs(paz["poles"][0]) == pytest.approx(2 * np.pi / 0.8)
     assert -paz["poles"][0].real / abs(paz["poles"][0]) == pytest.approx(0.7)
+
+
+def test_b_value_and_mc_on_synthetic_gr():
+    import analysis as A
+    rng = np.random.default_rng(3)
+    b_true, mc_true = 1.0, 1.0
+    # continuous GR above Mc, binned to 0.1
+    m = mc_true - 0.05 + rng.exponential(1 / (b_true * np.log(10)), 20000)
+    m = np.round(m, 1)
+    # add an incomplete tail below Mc
+    low = np.round(rng.uniform(0.0, 0.95, 3000), 1)
+    allm = np.concatenate([m, low])
+    res = A.b_value(m, mc_true)
+    assert abs(res["b"] - b_true) < 0.05
+    assert res["b_lo"] < b_true < res["b_hi"]
+    assert abs(A.mc_maxc(allm, correction=0.0) - mc_true) <= 0.11
+    mc_gof, lev, _ = A.mc_gof(allm)
+    assert abs(mc_gof - mc_true) <= 0.21
+
+
+def test_depth_percentiles_and_blasts():
+    import analysis as A
+    d = np.linspace(0, 20, 1001)
+    r = A.depth_percentiles(d, n_boot=200)
+    assert r["D90"] == pytest.approx(18.0, abs=0.05)
+    assert r["D90_lo"] <= 18.0 <= r["D90_hi"]
+    rng = np.random.default_rng(0)
+    # natural events uniform in time; a "mine" cell with daytime shallow events
+    n = 400
+    t_nat = rng.uniform(0, 30 * 86400, n)
+    cat = pd.DataFrame(dict(time=t_nat, latitude=rng.uniform(46, 48, n), longitude=rng.uniform(98, 101, n),
+                            depth_km=rng.uniform(2, 20, n)))
+    lon_mine = 100.1
+    day_utc = (11.0 - lon_mine / 15.0)  # local solar 11:00
+    t_mine = np.arange(30) * 86400 + day_utc * 3600 + rng.uniform(0, 3600, 30)
+    mine = pd.DataFrame(dict(time=t_mine, latitude=47.05, longitude=lon_mine, depth_km=0.5))
+    flag, ratio, overall = A.blast_flags(pd.concat([cat, mine], ignore_index=True))
+    assert flag[-30:].mean() > 0.9 and flag[:n].mean() < 0.05

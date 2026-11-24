@@ -62,11 +62,11 @@ def b_value(mags, mc, dm=0.1, n_boot=1000, seed=0, min_n=50):
     mean = m.mean()
     b = LOG10E / (mean - (mc - dm / 2))
     err = 2.3 * b ** 2 * np.sqrt(np.sum((m - mean) ** 2) / (n * (n - 1)))  # Shi & Bolt (1982)
-    rng = np.random.default_rng(seed)
-    bs = [LOG10E / (rng.choice(m, n).mean() - (mc - dm / 2)) for _ in range(n_boot)]
-    out.update(b=float(b), b_err_shibolt=float(err), b_lo=float(np.percentile(bs, 2.5)),
-               b_hi=float(np.percentile(bs, 97.5)), a=float(np.log10(n) + b * mc),
-               reliable=bool(n >= min_n))
+    out.update(b=float(b), b_err_shibolt=float(err), a=float(np.log10(n) + b * mc), reliable=bool(n >= min_n))
+    if n_boot > 0:
+        rng = np.random.default_rng(seed)
+        bs = [LOG10E / (rng.choice(m, n).mean() - (mc - dm / 2)) for _ in range(n_boot)]
+        out.update(b_lo=float(np.percentile(bs, 2.5)), b_hi=float(np.percentile(bs, 97.5)))
     return out
 
 
