@@ -1,11 +1,15 @@
-# STATUS (updated 2026-11-25 01:30 +08)
+# STATUS (updated 2026-11-25 03:20 +08)
 
-## Researcher decisions received 2026-11-25
-1. Velocity model: Dashdondog 2020 primary (done, D18); 2-layer = robustness check (`--vmodel config/vmodel_2layer.yaml --suffix _2layer`).
-2. Regions: Claude freezes `config/regions.geojson` from published geology with sources in decisions.md + a map figure. **IN PROGRESS**: DEM is at `data/reference/dem/etopo1.nc` (ETOPO1 via ERDDAP); a literature helper is collecting quotable definitions. Plan: interior = largest patch of 50-km-smoothed elevation above a published threshold; margin = HD footprint minus interior; Khövsgöl and Gobi-Altai = HV/AT footprints checked against published extents. Write `src/make_regions.py` + `results/fig_regions.png`.
-3. Faults: GEM (done, D19, `config/gem_faults_mongolia.geojson`).
-4. `brew install gcc fftw` is being run by the coordinator. When `brew list --versions gcc fftw` shows both: build GrowClust (git clone dttrugman/GrowClust, `make` in SRC with gfortran), `uv pip install eqcorrscan` and fast_matched_filter (CPU), test on pilot data. Only when picking is not competing; max 2 heavy processes.
-- Commit trailer is now `Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>`.
+## Done since the last checkpoint
+- Dashdondog 2020 is the primary velocity model (D18). GEM faults in `config/` (D19).
+- **Regions FROZEN v1** (D20): `config/regions.geojson` via `src/make_regions.py`, map `results/fig_regions.png`. Awaiting review.
+- Magnitudes use the Mongolian ML scale (Ganbat & Munkhuu 2026; D20a). `ml_hb87` is stored alongside. Joint attenuation inversion and ISC all-magnitude/event-type matching are in `magnitude.py` / `validate.py`.
+- 5-day check (tag `dbg_d15`): 120 events, 76 A+B; ISC 5/5 inside matched, including 2 ISC "known explosions" (5 Jan, ML 3.9).
+- Ensemble 0.1 against 0.3 on days 1–5: 120 against 68 events (D17b).
+
+## Compiler tests (pending gcc)
+- fftw 3.3.11 is installed; **gcc was still installing at 03:20** (the coordinator runs brew; do not start it). Check `brew list --versions gcc`.
+- A separate venv `.venv-tm` (numpy<2, setuptools<80) exists for EQcorrscan. The build with Apple clang fails on `-fopenmp`. Once gcc is in: `CC=gcc-<ver> CPATH=/opt/homebrew/include LIBRARY_PATH=/opt/homebrew/lib uv pip install --python .venv-tm/bin/python --no-build-isolation eqcorrscan==0.5.2`, then fast_matched_filter (CPU: `git clone https://github.com/beridel/fast_matched_filter`, `make python_cpu`, install), then GrowClust (`git clone https://github.com/dttrugman/GrowClust`, `make` in SRC with gfortran, run its example, then `src/relocate.py --tag <tag>` on pilot data).
 
 ## Running now (detached, resumable)
 - `scripts/pilot_download_loop.sh 2013-01-01 2013-02-01 HD 2` (log `data/logs/dl_loop.out`), ~800 station-days left at 01:20.
