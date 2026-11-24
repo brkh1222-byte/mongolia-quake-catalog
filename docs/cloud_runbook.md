@@ -34,6 +34,8 @@ bash scripts/run_full.sh                                # pass1 -> pass2 -> pass
 
 Set `DL_THREADS` for `run_full.sh` from that benchmark: total streams = `WORKERS × DL_THREADS`.
 
+**Tested locally (Mac, CPU + MPS):** pass 1 end to end (smoke test, including interruption and resume), and on pilot days 1–2 ensemble → PyOcto → location → snippets → ML → cross-correlation → QuakeScope comparison → ISC validation → analysis → report.
+
 **Linux-only tools.** GrowClust (Fortran), EQcorrscan (FFTW) and fast_matched_filter (CUDA) could not be built on the Mac: there is no Fortran compiler, and installing a toolchain was not allowed in this session. They are built and smoke-tested for the first time by `cloud_bootstrap.sh`. **Read the bootstrap output before starting the run.** If the GrowClust example or the FMF smoke test fails, pass 1 can still start (it does not need them) while the problem is fixed.
 
 ## 2. The three passes
@@ -67,10 +69,15 @@ MEASURED values were measured in this project; the others are extrapolated. The 
 | Station-days (metadata epochs) | 75,267 (HD 48,187, HV 17,602, AT 9,478) | MEASURED, `data/meta/stations.csv` |
 | Raw size per station-day | ~17.6 MB (HH?, 100 Hz, Steim) | MEASURED on the pilot downloads |
 | Total raw volume | ~1.3 TB | 75,267 × 17.6 MB |
-| Download, Mac (Mongolia → US) | 2 streams 3.2 MB/s, 4 streams 4.4 MB/s, 8 streams ~4.6 MB/s (saturated) | MEASURED, `results/download_throughput.md` |
+| Download, Mac (home link shared with 3 other projects) | 2 streams 3.2 MB/s, 4 streams 4.4 MB/s, 8 streams 4.75 MB/s: saturates at the local link. Later, with the shared network busy, 4 streams gave only 1.3 MB/s | MEASURED, `results/download_throughput.md`. **Not predictive for a data-centre box: measure there (bootstrap step 8)** |
 | Picking, Apple M4 GPU (MPS), 6 pairs | PhaseNet ~2.9 s, EQTransformer ~11 s per pair per station-day → **~42 s per station-day** | MEASURED, `results/bench_picking.csv` |
 | Non-GPU share of picking (Mac) | PhaseNet ~31 %, EQTransformer ~10 % | MEASURED (pure forward pass vs full `classify`) |
 | MPS vs CPU picks | identical (11/11, 14/14 within 10 ms); MPS 16× (PhaseNet) to 34× (EQT) faster than 4 CPU threads | MEASURED |
+| fp16 autocast vs fp32 (MPS) | all picks of all 6 pairs reproduced within 10 ms; no speed-up on MPS | MEASURED (`scripts/bench_amp.py`); re-check on CUDA, where tensor cores may give ~2× |
+| 20 Hz copy | 14 MB for 4 station-days = **3.5 MB per station-day** | MEASURED (smoke test) |
+| Event snippets | 27 MB for 43 events = **0.63 MB per event** | MEASURED (pilot days 1–2) |
+| PyOcto association | 0.2–3 s per day for 72 stations with a 300 km cutoff | MEASURED (pilot) |
+| Pass-1 smoke test (2 stations × 2 days, MPS), including a deliberate interruption and resume | PASSED: 4/4 done, 24 raw + 4 ensemble parquet, 4 × 20 Hz files, no raw left | MEASURED (`data/logs/smoke_mps.out`) |
 
 ### Pass-1 estimate on a 4090 (EXTRAPOLATED)
 
@@ -84,7 +91,7 @@ MEASURED values were measured in this project; the others are extrapolated. The 
 
 | Pass | Estimate | Basis |
 |---|---|---|
-| 2: association + location | 1–3 h | PyOcto is multithreaded C++. Pilot timing to be scaled by pick count |
+| 2: association + location | < 1 h | MEASURED 0.2–3 s per day of PyOcto and ~5 s per 40 events for location |
 | 2: snippet re-fetch | 3–8 h | ~1 bulk request per event (~0.3–1 MB), 8 threads; tens of thousands of events |
 | 2: ML + xcorr + GrowClust | 2–5 h | the xcorr pair count scales with clustering |
 | 3: template matching | 5–20 h | ~10³–10⁴ templates × ~50 channels × ~1,600 days at 20 Hz. To be measured on the box for one day first, then decided |
@@ -103,9 +110,9 @@ Add the volume: 400 GB × ~$0.05–0.10/GB/month ≈ $20–40/month, kept for ab
 
 | Item | Size |
 |---|---|
-| 20 Hz copy (Steim2 int32) | ~3–3.5 MB × 75k ≈ **230–270 GB** (to be measured by the smoke test) |
+| 20 Hz copy (Steim2 int32) | 3.5 MB × 75k ≈ **265 GB** (MEASURED rate) |
 | Raw picks (6 pairs) + ensemble parquet | ~1–3 GB |
-| Event snippets (100 Hz) | ~0.5–1 MB/event × 30–60k events ≈ 15–60 GB |
+| Event snippets (100 Hz) | 0.63 MB/event (MEASURED) × 20–60k events ≈ 13–40 GB |
 | Prefetch buffer | WORKERS × prefetch × 18 MB < 1 GB |
 | Env, tools, weights | ~15 GB |
 | **Total** | **~280–350 GB → rent 400 GB** |

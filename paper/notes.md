@@ -39,7 +39,20 @@ Status: DRAFT, updated as results come in. "PILOT" marks one-month numbers (Jan 
 
 ## C. Pilot (Jan 2013, HD): filled from results/validation_month.md
 
-(pending)
+Days 1–2 only (debug run, tag `dbg_d12`); full month pending:
+| Number | Statement | Source |
+|---|---|---|
+| 3,265 → 25 | strict ensemble (p ≥ 0.3) picks → events | associate log, `data/catalogs/dbg_d12*` |
+| 13,384 → 44 | adopted ensemble (p ≥ 0.1) → events (96 % of strict events included) | same |
+| 37,423 → 64 | "any" (≥ 1 pair) → events (22 D-class) | same |
+| 14,465 → 45 | QuakeScope picks → events, same PyOcto settings | debug run |
+| 4 of 44 | split duplicates removed | `events_split_duplicates.csv` |
+| 96 % | QuakeScope picks reproduced by our PhaseNet/instance at p ≥ 0.2, dt = 0 | `results/quakescope_dbg_d12.csv` |
+| 3 / 3 | ISC events inside the footprint on days 1–2 matched, median offset 5.6 km | `results/validation_dbg_d12.csv` |
+| 411 dt from 16 pairs | cross-correlation, CC ≥ 0.6 | xcorr log |
+| 0.63 MB/event | snippet size | `data/snippets` |
+| 3.5 MB per station-day | 20 Hz copy size | smoke test |
+
 
 ## D. Citations
 
