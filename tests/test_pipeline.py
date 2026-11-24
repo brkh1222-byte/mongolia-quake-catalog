@@ -143,3 +143,19 @@ def test_layered_tables_match_analytic_two_layer():
             ref = m.tt(ph, x, z, 0.0)
             got = first_arrival(lay, key, x, z)
             assert np.allclose(got, ref, atol=0.02), (z, ph, got - ref)
+
+
+def test_xcorr_recovers_known_lag_and_dt_is_float64():
+    import xcorr as X
+    rng = np.random.default_rng(0)
+    sig = rng.standard_normal(400).astype(np.float32)
+    K = 60
+    tmpl = sig[100:251]
+    seg = np.zeros(151 + 2 * K, np.float32)
+    shift = 7  # samples: the template sits 7 samples later in the segment
+    seg[K + shift:K + shift + 151] = tmpl
+    cc = X.batched_cc(tmpl[None], seg[None])
+    idx, val = X.subsample_peak(cc[0])
+    assert isinstance(idx, float) and abs(idx - (K + shift)) < 0.05 and val > 0.99
+    # a float32 lag must not degrade epoch-second arithmetic
+    assert abs((1.357e9 + 3.75 + float(idx - K) / 100.0) - 1.357e9 - 3.82) < 1e-6

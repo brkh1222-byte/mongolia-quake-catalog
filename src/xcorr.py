@@ -107,7 +107,7 @@ def batched_cc(templates: np.ndarray, segments: np.ndarray, device="cpu"):
 def subsample_peak(cc_row):
     k = int(np.argmax(cc_row))
     if 0 < k < len(cc_row) - 1:
-        y0, y1, y2 = cc_row[k - 1], cc_row[k], cc_row[k + 1]
+        y0, y1, y2 = float(cc_row[k - 1]), float(cc_row[k]), float(cc_row[k + 1])  # float64: NumPy 2 keeps float32 otherwise
         den = y0 - 2 * y1 + y2
         off = 0.5 * (y0 - y2) / den if den != 0 else 0.0
         return k + off, float(y1 - 0.25 * (y0 - y2) * off)
@@ -146,7 +146,7 @@ def compute_xcorr(cfg, cat, picks, max_sep_km=10.0, max_lag=0.6, device="cpu", f
         for key, cs in ncomp.items():
             i, j, sta, ph_ = key
             lag_idx, ccmax = subsample_peak(np.mean(cs, axis=0))
-            lag = (lag_idx - K) / fs
+            lag = float(lag_idx - K) / fs
             ev_i, ev_j = cat.iloc[i], cat.iloc[j]
             dt = (pk[(ev_i.event_id, sta, ph_)] - ev_i.time) - (pk[(ev_j.event_id, sta, ph_)] + lag - ev_j.time)
             rows.append((ev_i.event_id, ev_j.event_id, sta, ph_, dt, ccmax, lag))

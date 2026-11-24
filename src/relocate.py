@@ -52,15 +52,18 @@ def write_inputs(cat, stations, cfg, d: Path):
         for k, ev in enumerate(cat.itertuples(), 1):
             t = UTCDateTime(ev.time)
             mag = ev.ml if hasattr(ev, "ml") and np.isfinite(ev.ml) else 0.0
-            f.write(f"# {t.year:4d} {t.month:2d} {t.day:2d} {t.hour:2d} {t.minute:2d} "
+            # HypoDD "phase" header format without the leading '#', as in the GrowClust example:
+            # yr mon day hr min sec lat lon dep mag eh ez rms evid. Depths above sea level are set to 0
+            # (GrowClust's travel-time table starts at depth 0).
+            f.write(f"{t.year:4d} {t.month:2d} {t.day:2d} {t.hour:2d} {t.minute:2d} "
                     f"{t.second + t.microsecond / 1e6:6.3f} {ev.latitude:9.5f} {ev.longitude:10.5f} "
-                    f"{ev.depth_km:7.3f} {mag:5.2f} {min(ev.erh_km, 99):6.2f} {min(ev.erz_km, 99):6.2f} "
-                    f"{ev.rms_s:5.2f} {k:9d}\n")
+                    f"{max(ev.depth_km, 0.0):7.3f} {mag:6.2f} {min(ev.erh_km, 99):6.3f} {min(ev.erz_km, 99):6.3f} "
+                    f"{ev.rms_s:6.3f} {k:9d}\n")
             evnum[ev.event_id] = k
     with open(d / "stlist.txt", "w") as f:
         for s in stations.itertuples():
             f.write(f"{s.station:<6s} {s.lat:9.5f} {s.lon:10.5f} {s.elev:7.1f}\n")
-    lay = cfg["velocity_model"]["layers"]
+    lay = [dict(L, depth=max(L["depth"], 0.0)) for L in cfg["velocity_model"]["layers"]]
     with open(d / "vzmodel.txt", "w") as f:
         for i, L in enumerate(lay):
             if i > 0:
