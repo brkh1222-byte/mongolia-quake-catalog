@@ -13,7 +13,10 @@ from ensemble import ensemble_picks  # noqa: E402
 from locate import TwoLayer, locate_event  # noqa: E402
 from magnitude import minus_log_a0, wa_paz  # noqa: E402
 
+import yaml  # noqa: E402
+
 CFG = load_config()
+CFG2 = dict(CFG, velocity_model=yaml.safe_load(open(Path(__file__).resolve().parents[1] / 'config' / 'vmodel_2layer.yaml'))['velocity_model'])
 
 
 def _raw(rows):
@@ -55,7 +58,7 @@ def test_ensemble_one_pick_per_model_and_ps_conflict():
 
 
 def test_two_layer_travel_times():
-    m = TwoLayer(CFG)
+    m = TwoLayer(CFG2)
     # vertical incidence from 10 km depth to a sea-level station
     assert m.tt("P", 0.0, 10.0, 0.0) == pytest.approx(10 / 6.4)
     # far away the Moho head wave must be faster than the direct wave
@@ -68,7 +71,7 @@ def test_two_layer_travel_times():
 
 def test_locator_recovers_synthetic_event():
     rng = np.random.default_rng(1)
-    m = TwoLayer(CFG)
+    m = TwoLayer(CFG2)
     sx, sy = rng.uniform(-80, 80, 15), rng.uniform(-80, 80, 15)
     se = rng.uniform(1.2, 2.5, 15)
     true = np.array([5.0, -8.0, 12.0, 0.0])
@@ -132,8 +135,8 @@ def test_depth_percentiles_and_blasts():
 
 def test_layered_tables_match_analytic_two_layer():
     from traveltime import first_arrival
-    m = TwoLayer(CFG)
-    lay = CFG["velocity_model"]["layers"]
+    m = TwoLayer(CFG2)
+    lay = CFG2["velocity_model"]["layers"]
     x = np.array([0.0, 10, 50, 150, 250, 400, 700])
     for z in (0.0, 5.0, 15.0, 35.0):
         for ph, key in (("P", "vp"), ("S", "vs")):

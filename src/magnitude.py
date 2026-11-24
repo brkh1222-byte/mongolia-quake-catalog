@@ -98,12 +98,12 @@ def event_magnitude(amps: pd.DataFrame, coef=None, sta_corr: dict | None = None)
 
 def compute_magnitudes(cfg, cat: pd.DataFrame, picks: pd.DataFrame, log=None,
                        max_dist=None) -> tuple[pd.DataFrame, pd.DataFrame]:
-    from locate import TwoLayer, local_proj
+    from locate import make_model, local_proj
     from snippets import snippet_path
 
     inv = read_inventory(str(path(cfg, "stationxml") / "XL.xml"))
     stations = pd.read_csv(path(cfg, "meta") / "stations.csv").set_index("station")
-    model = TwoLayer(cfg)
+    model = make_model(cfg)
     max_dist = max_dist or cfg["magnitude"]["max_hypo_dist_km"]
     coef = cfg["magnitude"].get("attenuation") or DEFAULT_ATTEN
     rows, amp_rows = [], []

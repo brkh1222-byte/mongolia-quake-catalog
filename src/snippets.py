@@ -29,7 +29,7 @@ import pandas as pd
 from obspy import Stream, UTCDateTime, read
 
 from common import base_parser, day_path, get_logger, load_config, path, select_stations
-from locate import TwoLayer, local_proj
+from locate import make_model, local_proj
 
 
 def snippet_path(cfg, event_id: str, origin_time) -> Path:
@@ -104,7 +104,7 @@ def main(argv=None):
     cat = cat[cat.quality <= args.min_quality]
     stations = select_stations(cfg, args.stations or cfg["pilot"]["subarray"], cat.origin_time.min(),
                                cat.origin_time.max())
-    model = TwoLayer(cfg)
+    model = make_model(cfg)
     from concurrent.futures import ThreadPoolExecutor
 
     from obspy.clients.fdsn import Client

@@ -8,7 +8,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from common import load_config, select_stations  # noqa: E402
-from locate import TwoLayer, local_proj, locate_catalog, quality_flags  # noqa: E402
+from locate import make_model, local_proj, locate_catalog, quality_flags  # noqa: E402
 
 
 def test_pyocto_associates_and_locator_recovers_synthetic_events():
@@ -17,7 +17,7 @@ def test_pyocto_associates_and_locator_recovers_synthetic_events():
 
     cfg = load_config()
     st = select_stations(cfg, "HD", "2013-01-01", "2013-02-01")
-    m = TwoLayer(cfg)
+    m = make_model(cfg)
     rng = np.random.default_rng(7)
     proj = local_proj(st.lat.mean(), st.lon.mean())
     sx, sy = proj(st.lon.to_numpy(), st.lat.to_numpy())

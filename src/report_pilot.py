@@ -3,7 +3,7 @@
 Inputs (all produced by other scripts; missing pieces are reported as missing):
   data/picks/raw/*, data/picks/ensemble/*          src/pick.py, src/ensemble.py
   data/catalogs/{tag}/events.csv, picks.parquet     src/associate.py, src/locate.py, src/magnitude.py
-  data/catalogs/{tag}/events_dd2020.csv             src/locate.py --vmodel config/vmodel_dashdondog2020.yaml
+  data/catalogs/{tag}/events_2layer.csv             src/locate.py --vmodel config/vmodel_2layer.yaml
   results/quakescope_{tag}.md                       src/compare_quakescope.py
   results/validation_{tag}_refs.md / .csv           src/validate.py
   results/{tag}/summary.csv                         src/analyze.py --pilot
@@ -147,7 +147,7 @@ def main(argv=None):
         if "ml" in cat and cat.ml.notna().any():
             m = cat.ml.dropna()
             L += [f"Magnitudes: ML for {len(m)} events, range {m.min():.1f} to {m.max():.1f}, median {m.median():.1f}.", ""]
-        alt = d / "events_dd2020.csv"
+        alt = d / "events_2layer.csv"
         if alt.exists():
             b = pd.read_csv(alt)
             mm = cat.merge(b[["event_id", "latitude", "longitude", "depth_km", "quality"]], on="event_id", suffixes=("", "_dd"))
@@ -156,10 +156,12 @@ def main(argv=None):
                 dz = mA.depth_km_dd - mA.depth_km
                 dh = 111.2 * np.hypot(mA.latitude_dd - mA.latitude, (mA.longitude_dd - mA.longitude) * np.cos(np.radians(mA.latitude)))
                 L += ["### Velocity-model sensitivity", "",
-                      f"Relocating with the 8-layer South-Hangay model of Dashdondog et al. (2020) instead of the 2-layer model "
+                      f"Relocating with the 2-layer model (6.4/3.6 km/s over a 50 km Moho) instead of the primary 8-layer model of Dashdondog et al. (2020) "
                       f"(events quality A in both, n={len(mA)}): depth change median {dz.median():+.1f} km "
                       f"(16–84 %: {dz.quantile(0.16):+.1f} to {dz.quantile(0.84):+.1f} km); horizontal shift median {dh.median():.1f} km. "
-                      f"D90 2-layer {mA.depth_km.quantile(0.9):.1f} km vs Dashdondog {mA.depth_km_dd.quantile(0.9):.1f} km.", ""]
+                      f"D90 primary {mA.depth_km.quantile(0.9):.1f} km vs 2-layer {mA.depth_km_dd.quantile(0.9):.1f} km. "
+                      f"Median rms: primary {cat[cat.quality != 'D'].rms_s.median():.2f} s, 2-layer {b[b.quality != 'D'].rms_s.median():.2f} s; "
+                      f"quality A+B events: primary {int(cat.quality.isin(['A', 'B']).sum())}, 2-layer {int(b.quality.isin(['A', 'B']).sum())}.", ""]
 
     # 5. reference bulletins
     r = res / f"validation_{args.tag}_refs.md"

@@ -1,0 +1,8 @@
+# Robustness check only: crust Vp 6.4 / Vs 3.6 km/s (Meltzer et al. 2019 average crustal
+# velocities), Moho 50 km, mantle 8.0 / 4.5 km/s.
+#   python src/locate.py ... --vmodel config/vmodel_2layer.yaml --suffix _2layer
+velocity_model:
+  kind: analytic
+  layers:
+    - {depth: 0.0,  vp: 6.4, vs: 3.6}
+    - {depth: 50.0, vp: 8.0, vs: 4.5}
