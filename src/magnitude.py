@@ -240,12 +240,16 @@ def main(argv=None):
     d = path(cfg, "catalogs") / args.tag
     cat = pd.read_csv(d / "events.csv")
     picks = pd.read_parquet(d / "picks.parquet")
+    coef = cfg["magnitude"].get("attenuation") or DEFAULT_ATTEN
     mags, amps = compute_magnitudes(cfg, cat, picks, log)
+    if not amps.empty:  # Hutton & Boore (1987) magnitude alongside, for comparison
+        hb = amps.assign(m=np.log10(amps.amp_mm) + minus_log_a0(amps.hypo_km, DEFAULT_ATTEN)).groupby("event_id").m.median()
+        mags["ml_hb87"] = mags.event_id.map(hb)
     corr = station_corrections(amps, mags) if not amps.empty else {}
     if corr:  # second pass with station corrections
         rows = []
         for eid, g in amps.groupby("event_id"):
-            ml, err, n = event_magnitude(g, cfg["magnitude"].get("attenuation"), corr)
+            ml, err, n = event_magnitude(g, coef, corr)
             rows.append(dict(event_id=eid, ml_corr=ml, ml_corr_err=err))
         mags = mags.merge(pd.DataFrame(rows), on="event_id", how="left")
     slope, icpt = distance_residual_trend(amps, mags) if not amps.empty else (np.nan, np.nan)
@@ -261,7 +265,7 @@ def main(argv=None):
     if not amps.empty:
         amps.to_parquet(d / "amplitudes.parquet", index=False)
     pd.Series(corr, name="station_correction").to_csv(d / "station_corrections.csv")
-    cat = cat.drop(columns=[c for c in ("ml", "ml_err", "ml_n", "ml_corr", "ml_corr_err") if c in cat])
+    cat = cat.drop(columns=[c for c in ("ml", "ml_err", "ml_n", "ml_corr", "ml_corr_err", "ml_hb87") if c in cat])
     cat.merge(mags, on="event_id", how="left").to_csv(d / "events.csv", index=False)
 
 

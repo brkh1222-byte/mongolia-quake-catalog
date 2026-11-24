@@ -92,9 +92,12 @@ location:
   max_rms_s: 1.0
 
 magnitude:
-  # Hutton & Boore (1987) ML scale as baseline; the regional calibration
-  # (Mongolia) is fitted to ISC/EMSC reference events.
-  wa_magnification: 2080     # Uhrhammer & Collins (1990) / Hutton & Boore (1987)
+  # Distance correction  -log10 A0(R) = a log10(R/r_ref) + b (R - r_ref) + c,  A in mm, R hypocentral km.
+  # PRIMARY: the Mongolian ML scale of Ganbat & Munkhuu (2026, Geodyn. Tectonophys. 17(1), 0877, Eq. 4),
+  # derived from 261 events (ML 3.5-5.6, 2012-2019) on the IAG network plus these XL arrays. Same anchor as
+  # Hutton & Boore (1987): ML 3 = 1 mm at 100 km. Hutton & Boore (a 1.110, b 0.00189) is the alternative.
+  attenuation: {a: 0.9287, b: 0.0012, c: 3.0, r_ref: 100.0}
+  wa_magnification: 2080     # Uhrhammer & Collins (1990)
   window_s: {before_p: 1.0, after_s: 10.0}
   max_hypo_dist_km: 400
 
