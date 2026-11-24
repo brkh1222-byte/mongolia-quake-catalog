@@ -44,7 +44,7 @@ Here we build, validate and release such a catalogue. We apply one pipeline, wit
 \label{sec:data}
 
 \subsection{Setting}
-The Hangay Dome is a broad, high plateau in central Mongolia, underlain by slow, hot upper mantle \citep{feng2021} and a conductive lower crust \citep{comeau2018}. Teleseismic waveform modelling indicates that earthquakes in Mongolia are confined to the upper $\sim$20~km. In the Baikal rift to the north, by contrast, they occur throughout the crust \citep{bayasgalan2005,deverchere2001}. Active strike-slip faults cross the apparently aseismic Hangay \citep{walker2008}. \citet{huang2022} proposed that a ring of strong lithosphere shields the dome interior from deformation. The Khövsgöl rift is the south-western end of the Baikal rift system, and the Gobi-Altai hosted the 1957 earthquake of magnitude about 8. Fault traces for interpretation come from the Active Faults of Eurasia Database \citep{zelenin2022}.
+The Hangay Dome is a broad, high plateau in central Mongolia, underlain by slow, hot upper mantle \citep{feng2021} and a conductive lower crust \citep{comeau2018}. Teleseismic waveform modelling indicates that earthquakes in Mongolia are confined to the upper $\sim$20~km. In the Baikal rift to the north, by contrast, they occur throughout the crust \citep{bayasgalan2005,deverchere2001}. Active strike-slip faults cross the apparently aseismic Hangay \citep{walker2008}. \citet{huang2022} proposed that a ring of strong lithosphere shields the dome interior from deformation. The Khövsgöl rift is the south-western end of the Baikal rift system, and the Gobi-Altai hosted the 1957 earthquake of magnitude about 8. Fault traces for interpretation come from the GEM Global Active Faults Database \citep{styron2020}.
 
 \subsection{Seismic data}
 We use all broadband (HH, 100~Hz) channels of network XL \citep{xl_dataset}, obtained from the EarthScope Consortium FDSN web services. The station metadata list 114 station codes: 74 HD, 26 HV and 14 AT. Two HD codes operated only for a few weeks in 2012, leaving the 72 Hangay stations described by \citet{meltzer2019}. The station epochs sum to 75,267 station-days (48,187 HD, 17,602 HV, 9,478 AT), or about 1.3~TB of miniSEED (Figure~\ref{fig:availability}). Each station-day is downloaded, processed and deleted in a streaming pass (Section~\ref{sec:compute}). Only picks, a 20~Hz decimated copy for template matching and short event waveforms are kept.
@@ -68,11 +68,11 @@ Ensemble picks are associated with PyOcto \citep{munchmeyer2024}. PyOcto searche
 Each associated event is relocated with a weighted, robust (soft-$L_1$) least-squares inversion of its P and S arrival times for hypocentre and origin time. We start from the PyOcto solution and from several fixed starting depths to avoid local minima. Travel times are interpolated from the same first-arrival tables as used for association. Depths are relative to sea level and cannot be negative; station elevation enters as a vertical travel-time static. Pick weights are the ensemble probabilities, halved for S. Formal 1$\sigma$ uncertainties come from the scaled covariance matrix: horizontal (major semi-axis, $e_h$), depth ($e_z$) and origin time. Each event gets a quality class. Class A requires an rms residual $\le 0.5$~s, an azimuthal gap $\le 180^\circ$, $e_h \le 3$~km, $e_z \le 5$~km, a nearest station within $\max(15~\text{km}, 1.5\times\text{depth})$, and a depth not at a search bound. Class B requires rms $\le 0.8$~s, gap $\le 250^\circ$, $e_h \le 6$~km and $e_z \le 10$~km. Class C covers the remaining located events, and class D marks events with rms above 1~s or at the edge of the search volume. \placeholder{NonLinLoc probabilistic locations \citep{lomax2000} as a cross-check, if added}
 
 \subsection{Local magnitude}
-For each event we store three-component waveforms from every station with a pick and every station within 150~km. The window runs from 10~s before the predicted P arrival to 20~s after the predicted S arrival, and is at least 60~s long. Local magnitude $M_L$ uses the peak amplitude $A$ (mm) of each horizontal component after deconvolution to displacement and convolution with a Wood--Anderson response. That response has a natural period of 0.8~s, damping 0.7 and magnification 2080 \citep{uhrhammer1990}. The amplitude is measured from 1~s before P to 10~s after S. The distance correction is that of \citet{hutton1987}:
+For each event we store three-component waveforms from every station with a pick and every station within 150~km. The window runs from 10~s before the predicted P arrival to 20~s after the predicted S arrival, and is at least 60~s long. Local magnitude $M_L$ uses the peak amplitude $A$ (mm) of each horizontal component after deconvolution to displacement and convolution with a Wood--Anderson response. That response has a natural period of 0.8~s, damping 0.7 and magnification 2080 \citep{uhrhammer1990}. The amplitude is measured from 1~s before P to 10~s after S. The distance correction is the Mongolian local-magnitude scale of \citet{ganbat2026ml}, which was derived from 8,446 amplitudes of 261 events ($M_L$ 3.5--5.6) recorded by the national network and by these XL arrays:
 \begin{equation}
-M_L = \log_{10} A + 1.110 \log_{10}(R/100) + 0.00189\,(R-100) + 3.0,
+M_L = \log_{10} A + 0.9287 \log_{10}(R/100) + 0.0012\,(R-100) + 3.0,
 \end{equation}
-where $R$ is the hypocentral distance in km. The event magnitude is the median over station-components, after station corrections (median residuals of stations with at least 10 readings). Its uncertainty is the scaled median absolute deviation. We check whether the station residuals trend with distance, as a test of the Southern-California attenuation term in Mongolia. \placeholder{decide whether to adopt the Mongolian $M_L$ scale of \citet{ganbat2026ml}, after reading it and comparing on the full catalogue}. A constant offset to the ISC/EMSC/USGS magnitudes of matched events is estimated with a bootstrap. The magnitude types differ ($m_b$, $M_L$, $M_w$), so we report the offset rather than force our scale onto theirs.
+where $R$ is the hypocentral distance in km. It has the same anchor as the Southern California scale of \citet{hutton1987} ($M_L = 3$ for 1~mm at 100~km) but weaker attenuation; the \citet{hutton1987} magnitude is stored alongside for comparison. The event magnitude is the median over station-components, after station corrections (median residuals of stations with at least 10 readings). Its uncertainty is the scaled median absolute deviation. As an independent check, we invert our own amplitudes jointly for event magnitudes, station terms and the two distance coefficients. On pilot days 1--2 this gave a geometrical-spreading coefficient of \pilot{0.80 (95\% interval 0.50--1.07)} and an anelastic coefficient of \pilot{0.0013 (0.0004--0.0020)}, consistent with \citet{ganbat2026ml}. \placeholder{full-month values}. A constant offset to the ISC/EMSC/USGS magnitudes of matched events is estimated with a bootstrap. The magnitude types differ ($m_b$, $M_L$, $M_w$), so we report the offset rather than force our scale onto theirs.
 
 \subsection{Relative relocation}
 Differential travel times come from waveform cross-correlation of every event pair within 10~km, keeping each event's 40 nearest neighbours. Waveforms are band-passed at 2--15~Hz. P windows on the vertical component span $-0.5$ to $+1.0$~s around the pick. S windows on both horizontals span $-0.5$ to $+2.0$~s, and the correlation functions of the two horizontals are averaged. The lag search is $\pm0.6$~s. Normalised correlation coefficients are computed as one batched grouped convolution in PyTorch \citep{paszke2019}, and lags are refined to sub-sample precision with a parabola. Pairs with $CC \ge 0.6$ are used. Events are relocated with GrowClust \citep{trugman2017} in the same primary 1-D model, with relative uncertainties from 100 bootstrap resamples.
@@ -82,12 +82,12 @@ To lower the detection threshold, quality-A events recorded at six or more stati
 
 \subsection{Catalogue statistics}
 \label{sec:hypotheses}
-The magnitude of completeness $M_c$ is estimated by maximum curvature with a $+0.2$ correction \citep{woessner2005} and by the goodness-of-fit method at 90 and 95\% \citep{wiemer2000}, with bootstrap uncertainties. $b$-values use the maximum-likelihood estimator \citep{aki1965} with the binning correction $M_c - \Delta M/2$ \citep{utsu1966}, the \citet{shi1982} standard error, and bootstrap 95\% intervals. Seismogenic depth is measured as $D_{90}$ and $D_{95}$, the depths above which 90 and 95\% of the events lie. They are computed from quality-A events, with bootstrap intervals, per region (Hangay interior, Hangay margin, Khövsgöl, Gobi-Altai). The region polygons were drawn before any depth or $b$-value was computed. Possible quarry blasts are flagged, not removed, by the day/night event-rate ratio in 0.25$^\circ$ cells, by local working hours and by shallow depth. The hypotheses, fixed before the full run, are:
+The magnitude of completeness $M_c$ is estimated by maximum curvature with a $+0.2$ correction \citep{woessner2005} and by the goodness-of-fit method at 90 and 95\% \citep{wiemer2000}, with bootstrap uncertainties. $b$-values use the maximum-likelihood estimator \citep{aki1965} with the binning correction $M_c - \Delta M/2$ \citep{utsu1966}, the \citet{shi1982} standard error, and bootstrap 95\% intervals. Seismogenic depth is measured as $D_{90}$ and $D_{95}$, the depths above which 90 and 95\% of the events lie. They are computed from quality-A events, with bootstrap intervals, per region (Hangay interior, Hangay margin, Khövsgöl, Gobi-Altai). The region polygons were frozen before any full-catalogue depth or $b$-value was computed (Figure~\ref{fig:regions}). The Hangay interior is the largest connected area where topography smoothed over 50~km exceeds 2000~m, the half-height of the dome given that elevations ``average 2500~m, approximately 1000~m above the regional trend'' \citep{meltzer2019}. The Hangay margin is the rest of the Hangay station footprint. The Khövsgöl and Gobi-Altai regions are the footprints of their subarrays. Thresholds of 1800 and 2200~m are pre-declared sensitivity tests. Possible quarry blasts are flagged, not removed, by the day/night event-rate ratio in 0.25$^\circ$ cells, by local working hours and by shallow depth. The hypotheses, fixed before the full run, are:
 H1, the Hangay $M_c$ of the ML catalogue is below 1.2, the value of \citet{meltzer2019};
 H2a, $D_{90}$ is greater beneath Khövsgöl than beneath the Hangay;
 H2b, $D_{90}$ is greater at the Hangay margins than in the dome interior;
 H3, the Hangay $b$-value at our $M_c$ exceeds 0.71.
-\placeholder{the researcher should confirm or freeze the hypotheses and regions (config/regions.geojson) before the full run}
+\placeholder{the researcher reviews the frozen regions and hypotheses before the full run}
 
 \subsection{Computation}
 \label{sec:compute}
@@ -109,10 +109,10 @@ Our PhaseNet run with the INSTANCE weights, at the QuakeScope threshold of 0.2, 
 
 %=====================================================================
 \section{The catalogue}
-\placeholder{FULL RUN: event counts per subarray, $M_c$ per subarray and through time, location uncertainties, Figure: seismicity map on AFEAD faults, Figure: frequency--magnitude distributions.}
+\placeholder{FULL RUN: event counts per subarray, $M_c$ per subarray and through time, location uncertainties, Figure: seismicity map on GEM active faults, Figure: frequency--magnitude distributions.}
 
 \section{Fault activity}
-\placeholder{FULL RUN: which AFEAD faults carry seismicity above $M_c$; along-strike profiles; Table of per-fault statistics.}
+\placeholder{FULL RUN: which GEM faults carry seismicity above $M_c$; along-strike profiles; Table of per-fault statistics.}
 
 \section{Seismogenic depth and $b$-values}
 \placeholder{FULL RUN: $D_{90}$/$D_{95}$ per region with bootstrap intervals (H2a, H2b); $b$-values (H3); comparison with \citet{emanov2026} for Khövsgöl and with \citet{dashdondog2026} for the Egiin Davaa fault.}
@@ -169,6 +169,13 @@ $-5$ & 6.06 & 3.50 \\
 \includegraphics[width=0.95\textwidth]{../results/fig_availability.png}
 \caption{Data availability per station from the station metadata (epochs), with the pilot month marked.}
 \label{fig:availability}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.9\textwidth]{../results/fig_regions.png}
+\caption{Analysis regions (frozen before the full run), XL stations, topography (ETOPO1) and GEM active faults \citep{styron2020}.}
+\label{fig:regions}
 \end{figure}
 
 \bibliographystyle{plainnat}
