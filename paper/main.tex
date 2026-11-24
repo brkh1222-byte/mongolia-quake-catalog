@@ -101,11 +101,35 @@ The full run streams the data through one rented GPU (NVIDIA RTX 4090). Each sta
 \subsection{Picks compared with QuakeScope}
 Our PhaseNet run with the INSTANCE weights, at the QuakeScope threshold of 0.2, reproduces \pilot{96\%} of the QuakeScope XL picks on pilot days 1--2 (P 8,782 of 9,130; S 5,163 of 5,335) with zero median time difference. This identifies the QuakeScope model as PhaseNet/INSTANCE and verifies our data handling independently. We also reproduced exactly the published QuakeScope count for May 2013 (209,901 picks on 72 stations; \citealp{ni2025}). \placeholder{full-month numbers from results/quakescope\_pilot\_2013-01.md; events from associating QuakeScope picks with the same PyOcto settings (days 1--2: 45 events, versus 44 from our ensemble)}
 
-\subsection{Events compared with ISC, EMSC and USGS}
-\placeholder{from results/validation\_pilot\_2013-01\_refs.md}
+\subsection{Events}
+\pilot{[INTERIM: days 1--5 of the pilot month (355 station-days); to be replaced by the full month from results/validation\_month.md.]}
+The six-pair ensemble gave \pilot{36,402} picks and \pilot{120} events after removing 4 split duplicates: \pilot{22} of quality A, \pilot{67} B, \pilot{29} C and \pilot{2} D. That is \pilot{24} events per day. For comparison, the manual catalogue of \citet{dashdondog2020} averages 587 events per month (12,912 events in 22 months), or about 19 per day. The automatic catalogue is therefore of similar size to the manual one in this window, not several times larger. Quality A and B events have a median rms residual of \pilot{0.34~s}, median formal errors of \pilot{0.7~km} horizontally and \pilot{1.9~km} in depth, and a median azimuthal gap of \pilot{144$^\circ$}.
 
-\subsection{Comparison with the preliminary Hangay catalogue}
-\placeholder{event rate per month compared with \citet{meltzer2019}}
+Table~\ref{tab:picksets} compares pick sets passed through the same associator and locator. The stricter ensemble threshold loses \pilot{43\%} of the events. The public QuakeScope picks yield \pilot{114} events, \pilot{102} of them in common with ours.
+
+\begin{table}[h]
+\centering
+\caption{\pilot{Interim, pilot days 1--5.} Events from different pick sets with identical association and location settings.}
+\label{tab:picksets}
+\begin{tabular}{lrrrrr}
+\toprule
+Pick set & Events & A & B & C & D \\
+\midrule
+Six-pair ensemble, mean $p \ge 0.1$ (adopted) & 120 & 22 & 67 & 29 & 2 \\
+Six-pair ensemble, mean $p \ge 0.3$ & 68 & 17 & 36 & 14 & 1 \\
+QuakeScope (PhaseNet/INSTANCE, $p \ge 0.2$) & 114 & 18 & 59 & 33 & 4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Velocity-model sensitivity}
+With the primary model the median rms residual is \pilot{0.37~s} and \pilot{89} of 120 events reach quality A or B. With the two-layer model the values are \pilot{0.46~s} and \pilot{43}. The depth distribution depends strongly on the model: \pilot{23\%} of quality-A events lie above 10~km with the primary model against \pilot{74\%} with the two-layer model, and $D_{90}$ is \pilot{18.9} against \pilot{16.8~km}. Absolute depths must therefore be interpreted with the model dependence in mind. \placeholder{full-month values; relative relocation}
+
+\subsection{Events compared with ISC, EMSC and USGS}
+\pilot{In the first five days all 5 ISC events inside the station footprint were matched (median epicentral difference 26~km, median origin-time difference 0.9~s).} EMSC and USGS list no events in the footprint for these days. Two of the five are classified by the ISC as known explosions (5 January 2013, our $M_L$ 3.9), which gives a test of the blast screening. \placeholder{full month: match rate, offsets, magnitude differences by agency and type from results/validation\_pilot\_2013-01\_refs.md}
+
+\subsection{Magnitudes}
+\pilot{Station residuals show no trend with distance under the Mongolian scale (slope 0.01 per decade of distance, against 0.10 with the \citet{hutton1987} correction on days 1--2).} \placeholder{full-month attenuation inversion; offsets to IDC $M_L$ and ISC $m_b$}
 
 %=====================================================================
 \section{The catalogue}

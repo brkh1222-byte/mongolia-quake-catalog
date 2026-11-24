@@ -127,8 +127,9 @@ def main(argv=None):
               f"- Per day: {len(cat) / ndays:.0f} (all), {len(AB) / ndays:.0f} (A+B).",
               f"- Benchmark: the manual MNDC catalogue had {DD2020_EVENTS} events in {DD2020_MONTHS} months "
               f"(Dashdondog et al. 2020), i.e. ≈ {DD2020_EVENTS / DD2020_MONTHS:.0f} per month on average. "
-              f"The pilot month has **{len(cat[cat.quality != 'D'])}** events of quality A–C "
-              f"(**{len(cat[cat.quality != 'D']) / (DD2020_EVENTS / DD2020_MONTHS):.1f}×** that average). "
+              f"The pilot window ({ndays} days) has **{len(cat[cat.quality != 'D'])}** events of quality A–C, i.e. "
+              f"**{len(cat[cat.quality != 'D']) / ndays * 30.44:.0f} per month** "
+              f"(**{len(cat[cat.quality != 'D']) / ndays * 30.44 / (DD2020_EVENTS / DD2020_MONTHS):.1f}×** that average). "
               "Seasonal and aftershock variation make this a rough comparison only. Meltzer et al. (2019) did not "
               "report their catalogue size.", ""]
         if len(AB):
@@ -162,6 +163,29 @@ def main(argv=None):
                       f"D90 primary {mA.depth_km.quantile(0.9):.1f} km vs 2-layer {mA.depth_km_dd.quantile(0.9):.1f} km. "
                       f"Median rms: primary {cat[cat.quality != 'D'].rms_s.median():.2f} s, 2-layer {b[b.quality != 'D'].rms_s.median():.2f} s; "
                       f"quality A+B events: primary {int(cat.quality.isin(['A', 'B']).sum())}, 2-layer {int(b.quality.isin(['A', 'B']).sum())}.", ""]
+
+    # 4b. alternative pick sets through the same associator and locator
+    if (d / "events.csv").exists():
+        cat0 = pd.read_csv(d / "events.csv")
+        rows = [dict(pick_set=f"six-pair ensemble, mean p ≥ {cfg['ensemble']['min_mean_prob']} (adopted)", events=len(cat0),
+                     A=int((cat0.quality == "A").sum()), B=int((cat0.quality == "B").sum()),
+                     C=int((cat0.quality == "C").sum()), D=int((cat0.quality == "D").sum()),
+                     adopted_events_also_found=np.nan, events_not_in_adopted=np.nan)]
+        t0 = np.sort(cat0.time.to_numpy())
+        for suffix, label in (("_strict", "six-pair ensemble, mean p ≥ 0.3"), ("_qs", "QuakeScope picks (PhaseNet/INSTANCE, p ≥ 0.2)")):
+            f = path(cfg, "catalogs") / (args.tag + suffix) / "events.csv"
+            if not f.exists():
+                continue
+            c = pd.read_csv(f)
+            tc = np.sort(c.time.to_numpy())
+            near = lambda a, b: np.array([np.min(np.abs(b - x)) <= 5.0 for x in a]) if len(b) else np.zeros(len(a), bool)
+            rows.append(dict(pick_set=label, events=len(c), A=int((c.quality == "A").sum()), B=int((c.quality == "B").sum()),
+                             C=int((c.quality == "C").sum()), D=int((c.quality == "D").sum()),
+                             adopted_events_also_found=int(near(t0, tc).sum()), events_not_in_adopted=int((~near(tc, t0)).sum())))
+        if len(rows) > 1:
+            L += ["### Same associator and locator, different pick sets", "",
+                  pd.DataFrame(rows).to_markdown(index=False, floatfmt=".0f"), "",
+                  "Events are matched by origin time within 5 s.", ""]
 
     # 5. reference bulletins
     r = res / f"validation_{args.tag}_refs.md"
