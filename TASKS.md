@@ -43,4 +43,4 @@ Work top to bottom. Each task has a "done when" check. Tick boxes in this file a
 
 ## Phase 7: Release
 - [ ] **T7.1** Catalog export (CSV + QuakeML) and Zenodo-ready data package.
-- [ ] **T7.2** Figures and `paper/notes.md` results summary. **The student writes the paper text personally.**
+- [ ] **T7.2** Figures and `paper/notes.md` results summary. **Claude drafts the paper; the researcher reviews and edits it; the paper carries an AI-use disclosure** (`[AUTHORS — TBD]`, `[AI-USE STATEMENT — TBD]`).

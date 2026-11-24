@@ -1,0 +1,13 @@
+# Decisions log
+
+Decisions that belong to the researcher. In each case the agent picked the most defensible option so that work could continue. Every entry can be reversed.
+
+| # | Date | Decision | Options considered | Why this one |
+|---|---|---|---|---|
+| D1 | 2026-11-24 | **Paper authorship:** Claude drafts, the researcher edits, and the paper carries an AI-use disclosure. Placeholders `[AUTHORS — TBD]` and `[AI-USE STATEMENT — TBD]` | — | The researcher's instruction (replaces the old "student writes the paper" rule) |
+| D2 | 2026-11-24 | **Pilot month 1 = January 2013 (Hangay, HD).** Pilot month 2 = May 2013 | Jan 2013; May 2013 (QuakeScope's showcase month); Oct 2013 (full coverage, 1 ISC event) | Jan 2013 has the most ISC events inside the network of any month (≥7). Station coverage is 70–71 of 72. May 2013 adds a different season and lets us check our QuakeScope download against the published figure (209,901 picks on 72 stations). |
+| D3 | 2026-11-24 | **Disk:** the two months do not both fit under 60 GB (~39 GB each). After month 1 is picked, located and its magnitudes measured, its continuous waveforms are deleted and only 3-min event snippets are kept. Then month 2 is downloaded | Keep both (breaks the limit); download month 2 at reduced size (downsampling changes the picker input) | Keeps full-quality input and stays under 60 GB |
+| D4 | 2026-11-24 | **Velocity model for the pilot:** two layers, Vp 6.4 / Vs 3.6 km/s over a Moho at 50 km, then 8.0 / 4.5 km/s (PROPOSAL §6) | The Dashdondog et al. 2020 South-Hangay 1-D model (layer values not yet extracted from the paper); a 3-D model (Feng 2021) | Simple, documented, and swappable in config. Testing the Dashdondog model is a to-do before the full run |
+| D5 | 2026-11-24 | **First-pass location = PyOcto's own location plus an independent iterative least-squares relocator (scipy) with bootstrap errors. NonLinLoc is deferred to the H100 run** | Compile NonLinLoc now | NonLinLoc needs a C build and grid files. The pilot has to test the chain, and the least-squares locator gives formal errors for validation |
+| D6 | 2026-11-24 | **Ensemble rule:** a pick needs support from ≥2 of the 6 model/weight pairs and a mean probability ≥0.3 (a missing model counts as 0) | Majority vote (≥4 of 6); single best model | A permissive vote favours recall. The associator rejects isolated false picks. The vote threshold is a config value and is evaluated in the pilot |
+| D7 | 2026-11-24 | **Branch:** work continues on `research-plan` (the active branch, already on origin), not `main` | New branch `pipeline` | Avoids splitting the history. Merging into `main` is the researcher's call |

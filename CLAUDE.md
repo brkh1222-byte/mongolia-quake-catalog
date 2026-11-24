@@ -6,4 +6,6 @@ This is a research project by an independent researcher: an open ML earthquake c
 - **Data:** about 1.3 TB of miniSEED goes under `data/` and is git-ignored. Never commit waveforms. Downloads must be resumable.
 - **Tools:** Python with ObsPy, SeisBench, PyOcto/GaMMA, NonLinLoc, GrowClust and EQcorrscan + fast_matched_filter. Prefer well-documented off-the-shelf tools over custom methods.
 - **Reproducibility:** pin versions in `environment.yml`. Every figure and table in the paper must be regenerable from a script in `src/` or a notebook.
-- **Integrity:** the student must understand and write the paper themselves. Explain methods when implementing them. Verify every citation.
+- **Integrity:** Claude drafts the paper; the researcher reviews and edits it; the paper carries an AI-use disclosure. Authorship is undecided: use the placeholders `[AUTHORS — TBD]` and `[AI-USE STATEMENT — TBD]`. Explain methods when implementing them. Verify every citation.
+- **Compute status (2026-11-24):** no H100 access yet. Anything that needs the H100 is marked `BLOCKED: H100` in TASKS.md; everything else is built and validated at laptop scale (see `docs/h100_runbook.md`).
+- **Environment:** laptop uses `uv` (`uv venv --python 3.11 .venv`; pins in `requirements-lock.txt`); the GPU box uses `environment.yml`.

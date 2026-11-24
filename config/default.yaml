@@ -1,0 +1,93 @@
+# Default configuration for the mongolia-quake-catalog pipeline.
+# Every path is relative to the repository root unless absolute.
+# Override any value on the H100 box with a second YAML passed via --config.
+
+paths:
+  data: data
+  meta: data/meta
+  mseed: data/mseed            # day files: {mseed}/{net}.{sta}/{year}/{jday:03d}.mseed
+  stationxml: data/meta/stationxml
+  picks: data/picks            # per station-day parquet, one file per model
+  catalogs: data/catalogs
+  reference: data/reference    # ISC / EMSC / QuakeScope downloads
+  results: results
+  logs: data/logs
+
+fdsn:
+  # service.iris.edu now 301-redirects to service.earthscope.org
+  base_url: https://service.earthscope.org
+  network: XL
+  channel_priority: ["HH[ZNE12]"]
+  location: "*"
+
+time:
+  start: 2012-06-01
+  end: 2016-07-01
+
+subarrays:
+  HD: {name: Hangay, prefix: HD, start: 2012-06-10, end: 2014-04-10}
+  HV: {name: Khovsgol, prefix: HV, start: 2014-08-05, end: 2016-06-11}
+  AT: {name: Gobi-Altai, prefix: AT, start: 2014-08-05, end: 2016-06-11}
+
+download:
+  threads_per_station: 2
+  parallel_requests: 4        # laptop default; use 8 on the H100 box
+  chunk: day
+  minimum_length: 0.0         # keep partial days; picking handles gaps
+  retries: 3
+
+picking:
+  device: cpu                 # cpu | cuda
+  # Every (model, weights) pair is run independently and merged by the ensemble.
+  models:
+    - {model: PhaseNet, weights: stead}
+    - {model: PhaseNet, weights: instance}
+    - {model: PhaseNet, weights: original}
+    - {model: EQTransformer, weights: stead}
+    - {model: EQTransformer, weights: instance}
+    - {model: EQTransformer, weights: original}
+  # SeisBench default thresholds are 0.3 (P/S). We keep a low raw threshold
+  # and let the ensemble decide.
+  raw_threshold: {P: 0.2, S: 0.2}
+  batch_size: 256
+  torch_threads: 4
+
+ensemble:
+  tolerance_s: {P: 0.3, S: 0.5}
+  min_models: 2               # a pick must be found by >= 2 of the 6 model/weight pairs
+  min_mean_prob: 0.3          # mean prob over all models (missing model = 0)
+
+velocity_model:
+  # PROPOSAL §6: Vp 6.4, Vs 3.6 km/s crust, Moho ~50 km (Meltzer et al. 2019).
+  # Layered upper mantle values are ak135-like.
+  layers:
+    - {depth: 0.0,  vp: 6.4, vs: 3.6}
+    - {depth: 50.0, vp: 8.0, vs: 4.5}
+
+association:
+  # PyOcto settings. Coordinates are local (km) around the pilot centroid.
+  time_before: 300.0
+  n_picks: 8
+  n_p_picks: 4
+  n_s_picks: 2
+  n_p_and_s_picks: 2
+  pick_match_tolerance: 1.5
+  zlim: [0.0, 60.0]
+  xy_margin_km: 100.0
+
+location:
+  method: pyocto_lsq           # first pass; NonLinLoc on the H100 run
+  max_rms_s: 1.0
+
+magnitude:
+  # Hutton & Boore (1987) ML scale as baseline; the regional calibration
+  # (Mongolia) is fitted to ISC/EMSC reference events.
+  wa_magnification: 2080     # Uhrhammer & Collins (1990) / Hutton & Boore (1987)
+  window_s: {before_p: 1.0, after_s: 10.0}
+  max_hypo_dist_km: 400
+
+pilot:
+  subarray: HD
+  months:                     # notes/decisions.md D2
+    - {start: 2013-01-01, end: 2013-02-01}
+    - {start: 2013-05-01, end: 2013-06-01}

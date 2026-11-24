@@ -1,0 +1,36 @@
+# Environment for the H100 box (Linux x86_64, CUDA 12.x driver).
+# The laptop pilot used the identical versions via uv + pip (CPU torch);
+# see requirements-lock.txt for the full frozen list.
+#
+#   conda env create -f environment.yml      # or: mamba / micromamba
+#   conda activate mqc
+#
+# If conda is unavailable on the GPU box, the same pins work with uv:
+#   uv venv --python 3.11 .venv
+#   uv pip install --python .venv/bin/python -r requirements-lock.txt \
+#       --extra-index-url https://download.pytorch.org/whl/cu126
+name: mqc
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - cartopy=0.26.0
+  - pyproj=3.7.2
+  - shapely=2.2.0
+  - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cu126
+      - torch==2.15.0          # CUDA build from the PyTorch index
+      - obspy==1.5.2
+      - seisbench==0.13.0
+      - pyocto==0.1.4
+      - numpy==2.4.6
+      - scipy==1.17.1
+      - pandas==3.1.1
+      - pyarrow==26.0.1
+      - matplotlib==3.11.2
+      - h5py==3.16.0
+      - tqdm==4.70.1
+      - pyyaml==6.0.4
+      - requests==2.34.2
+      - pytest==9.2.0
