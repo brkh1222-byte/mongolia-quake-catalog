@@ -72,6 +72,8 @@ Depth (A events, n=22): median 10.4 km, 90th percentile 18.9 km; fraction above 
 
 Shift between the PyOcto grid location and the least-squares location (A+B): median 1.3 km horizontally, 2.5 km in depth.
 
+Magnitudes: ML for 118 events, range -0.1 to 4.3, median 0.8.
+
 ### Same associator and locator, different pick sets
 
 | pick_set                                      |   events |   A |   B |   C |   D |   adopted_events_also_found |   events_not_in_adopted |
@@ -81,6 +83,11 @@ Shift between the PyOcto grid location and the least-squares location (A+B): med
 | QuakeScope picks (PhaseNet/INSTANCE, p ≥ 0.2) |      114 |  18 |  59 |  33 |   4 |                         102 |                      12 |
 
 Events are matched by origin time within 5 s.
+
+### Relative relocation (cross-correlation + GrowClust)
+
+- Differential times: 2589 (CC ≥ 0.6) from 297 event pairs within 10 km; median CC 0.76; median |dt| 0.23 s.
+- GrowClust relocated 44 of 118 events in 7 clusters. Median shift from the absolute location: 0.75 km horizontally, 1.00 km in depth. Bootstrap errors (median): horizontal 0.11 km, vertical 0.22 km.
 
 ## 5. Events compared with ISC, EMSC and USGS
 

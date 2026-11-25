@@ -187,6 +187,20 @@ def main(argv=None):
                   pd.DataFrame(rows).to_markdown(index=False, floatfmt=".0f"), "",
                   "Events are matched by origin time within 5 s.", ""]
 
+    rl = d / "events_relocated.csv"
+    xc = d / "xcorr.parquet"
+    if rl.exists() and xc.exists():
+        r = pd.read_csv(rl)
+        x = pd.read_parquet(xc)
+        q = r[r.relocated.fillna(False).astype(bool)]
+        L += ["### Relative relocation (cross-correlation + GrowClust)", "",
+              f"- Differential times: {len(x)} (CC ≥ 0.6) from {x.groupby(['evid1', 'evid2']).ngroups} event pairs within 10 km; "
+              f"median CC {x.cc.median():.2f}; median |dt| {x.dt.abs().median():.2f} s.",
+              f"- GrowClust relocated {len(q)} of {len(r)} events in {q.cID.nunique()} clusters. Median shift from the absolute location: "
+              f"{float(np.median(111.2 * np.hypot(q.latR - q.latitude, (q.lonR - q.longitude) * np.cos(np.radians(q.latitude))))) if len(q) else float('nan'):.2f} km "
+              f"horizontally, {float(np.median(np.abs(q.depR - q.depth_km.clip(lower=0)))) if len(q) else float('nan'):.2f} km in depth. "
+              f"Bootstrap errors (median): horizontal {q.eh[q.eh > 0].median():.2f} km, vertical {q.ez[q.ez > 0].median():.2f} km.", ""]
+
     # 5. reference bulletins
     r = res / f"validation_{args.tag}_refs.md"
     L += ["## 5. Events compared with ISC, EMSC and USGS", ""]

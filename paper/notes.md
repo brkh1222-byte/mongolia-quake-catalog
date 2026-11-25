@@ -57,3 +57,25 @@ Days 1–2 only (debug run, tag `dbg_d12`); full month pending:
 ## D. Citations
 
 All 44 entries in `paper/references.bib` were checked against Crossref, DataCite, JaLC or publisher records by a helper agent on 2026-11-24. Corrections made: zhu2019 (volume/pages added), wiemer2000 and woessner2005 (second authors), storchak2017 (journal is *Geoscience Letters* 4:32), aki1965 (DOI 10.15083/0000033631). Open items: `uhrhammer1990` has no DOI (BSSA 80(3), 702–716). `utsu1966` is the b-value significance-test paper usually cited for the ΔM/2 correction; confirm. The paper text must not say "Meltzer catalog of 7,680 events".
+
+## C2. Pilot days 1–5 (interim; tag `dbg_d15`, primary model, datum, Mongolian ML). Source: `results/validation_days1-5_interim.md` unless noted
+
+| Number | Statement | Source |
+|---|---|---|
+| 355 | station-days with data (5 empty) | §1 |
+| 36,402 | ensemble picks (P 17,103, S 19,299) | §2 |
+| 120 = 22 A + 67 B + 29 C + 2 D | events after removing 4 split duplicates | §4 |
+| 24 per day; 718 per month; 1.2× | event rate against the manual catalogue average (587 per month) | §4 |
+| 0.34 s; 0.7 km; 1.9 km; 144° | A+B median rms, erh, erz, gap | §4 |
+| 68 events (p ≥ 0.3); 114 events (QuakeScope picks), 102 in common | pick-set comparison | §4 table |
+| 0.37 s vs 0.46 s; 89 vs 43 A+B | primary vs 2-layer model | `notes/decisions.md` D18b |
+| 23 % vs 74 % above 10 km; D90 18.9 vs 16.8 km | depth sensitivity to the model (quality A) | D18b |
+| 93–95 % | QuakeScope picks reproduced by PhaseNet/instance p ≥ 0.2 (P 22,287 of 23,845; S 13,793 of 14,519) | §3 |
+| 5 of 5 | ISC events inside the footprint matched; median 26 km, 0.9 s; 2 are ISC "known explosions" | §5 |
+| slope 0.01–0.03 | station residual vs log R with the Mongolian scale (0.10 with Hutton & Boore, days 1–2) | magnitude log |
+| n 0.57–0.60, K 0.0020 | own attenuation inversion, days 1–5 (6,226 amplitudes, 118 events); CI n 0.35–0.90 | `data/catalogs/dbg_d15/attenuation_fit.json` |
+| 2,589 dt, 297 pairs, CC median 0.76 | cross-correlation | relocation section |
+| 44 of 118 in 7 clusters; 0.75 km / 1.0 km shift; 0.11 / 0.22 km errors | GrowClust | relocation section |
+| 4 templates, 2 days, 10 detections, FFTW = FMF | template-matching functional test | `data/catalogs/dbg_d15/templates/` |
+| 0.9287, 0.0012 | Mongolian ML coefficients (Ganbat & Munkhuu 2026, Eq. 4; full text read) | paper |
+| ~200,000 km²; 2500 m; ~1000 m above trend | Hangay upland (Meltzer et al. 2019, p. 1364) → 2000 m interior rule | `notes/decisions.md` D20 |

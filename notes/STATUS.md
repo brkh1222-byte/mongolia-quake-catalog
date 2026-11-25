@@ -1,15 +1,27 @@
-# STATUS (updated 2026-11-25 03:20 +08)
+# STATUS (updated 2026-11-25 10:10 +08)
 
-## Done since the last checkpoint
-- Dashdondog 2020 is the primary velocity model (D18). GEM faults in `config/` (D19).
-- **Regions FROZEN v1** (D20): `config/regions.geojson` via `src/make_regions.py`, map `results/fig_regions.png`. Awaiting review.
-- Magnitudes use the Mongolian ML scale (Ganbat & Munkhuu 2026; D20a). `ml_hb87` is stored alongside. Joint attenuation inversion and ISC all-magnitude/event-type matching are in `magnitude.py` / `validate.py`.
-- 5-day check (tag `dbg_d15`): 120 events, 76 A+B; ISC 5/5 inside matched, including 2 ISC "known explosions" (5 Jan, ML 3.9).
-- Ensemble 0.1 against 0.3 on days 1–5: 120 against 68 events (D17b).
+## State
+- Pilot download: **complete** (2,207 station-days, 40 GB in `data/`).
+- Picking (MPS): 955 of 2,207 station-days at 09:58; ~80 per hour → **ETA ≈ 26 Nov 01:30**. Loop: `scripts/pilot_pick_loop.sh`.
+- **`scripts/pilot_finish.sh` is running detached**: it waits for picking, then runs the whole chain for tag `pilot_2013-01` (ensemble → associate → locate → 2-layer check → snippets → ML → xcorr → GrowClust → QuakeScope → ISC validation → analysis → report → export), the strict-ensemble comparison and the QuakeScope-pick catalogue. Log `data/logs/pilot_finish.out`; the final line is `PILOT FINISH DONE`. Result: `results/validation_month.md`.
+- If the Mac reboots: restart the pick loop and the finisher:
+```bash
+cd ~/Desktop/mongolia-quake-catalog
+nohup caffeinate -i bash scripts/pilot_pick_loop.sh 2013-01-01 2013-02-01 HD > /dev/null 2>&1 &
+nohup caffeinate -i bash scripts/pilot_finish.sh > data/logs/pilot_finish.out 2>&1 &
+```
 
-## Compiler tests (pending gcc)
-- fftw 3.3.11 is installed; **gcc was still installing at 03:20** (the coordinator runs brew; do not start it). Check `brew list --versions gcc`.
-- A separate venv `.venv-tm` (numpy<2, setuptools<80) exists for EQcorrscan. The build with Apple clang fails on `-fopenmp`. Once gcc is in: `CC=gcc-<ver> CPATH=/opt/homebrew/include LIBRARY_PATH=/opt/homebrew/lib uv pip install --python .venv-tm/bin/python --no-build-isolation eqcorrscan==0.5.2`, then fast_matched_filter (CPU: `git clone https://github.com/beridel/fast_matched_filter`, `make python_cpu`, install), then GrowClust (`git clone https://github.com/dttrugman/GrowClust`, `make` in SRC with gfortran, run its example, then `src/relocate.py --tag <tag>` on pilot data).
+## After `PILOT FINISH DONE`
+1. Read `results/validation_month.md`; replace the interim (days 1–5) numbers in `paper/main.tex` §4 and `paper/notes.md` C2.
+2. Confirm on the month: ensemble 0.1 (table "different pick sets"), primary velocity model (sensitivity section), magnitude calibration (`attenuation_fit.json`, `results/magcal_pilot_2013-01.csv`), blast flags against ISC `ke`/`sm` events.
+3. Template matching on the month needs 20 Hz copies: `python scripts/decimate_local.py --start 2013-01-01 --end 2013-02-01 --stations HD` (~7 GB), then `.venv-tm/bin/python src/template_match.py --tag pilot_2013-01 --stations HD --start 2013-01-01 --end 2013-02-01 --device cpu`.
+4. Then delete `data/mseed` (keep snippets) to free ~38 GB.
+
+## Done (all committed)
+- Researcher decisions applied: Dashdondog 2020 primary (D18, D18b), GEM faults (D19), regions frozen v1 with map (D20, awaiting review), compiler tests.
+- GrowClust (gfortran), EQcorrscan + FMF CPU (`.venv-tm`, D22) built and run on pilot data. FMF CUDA is untested.
+- Mongolian ML scale adopted (D20a); elevation datum (D21); float32 lag bug in xcorr fixed.
+- Interim 5-day validation: `results/validation_days1-5_interim.md`.
 
 ## Running now (detached, resumable)
 - `scripts/pilot_download_loop.sh 2013-01-01 2013-02-01 HD 2` (log `data/logs/dl_loop.out`), ~800 station-days left at 01:20.
