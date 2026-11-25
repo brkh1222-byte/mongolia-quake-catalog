@@ -56,7 +56,7 @@ pass2() {
 pass3() {
   for S in $SUBARRAYS; do
     set -- $(span $S)
-    $PY src/template_match.py --config $CFG --stations $S --start $1 --end $2 \
+    "$REPO/.venv-tm/bin/python" src/template_match.py --config $CFG --stations $S --start $1 --end $2 \
         --tag full_$S --device cuda >> data/logs/pass3_$S.log 2>&1
   done
 }

@@ -28,8 +28,8 @@ Work top to bottom. Each task has a "done when" check. Tick boxes in this file a
   *Done when:* `results/validation_month.md` contains match rates and location offsets.
 
 ## Phase 4: Relocation and magnitudes
-- [ ] **T4.1** Write `src/xcorr.py`: GPU waveform cross-correlation (PyTorch) for event pairs within 10 km. Output differential times. *(code done, PyTorch CPU/MPS/CUDA; tested on days 1–2: 411 dt from 16 pairs)*
-- [ ] **T4.2** GrowClust relative relocation. *(wrapper done; GrowClust is Fortran: built and tested only on the Linux cloud box)*
+- [x] **T4.1** Write `src/xcorr.py`: GPU waveform cross-correlation (PyTorch) for event pairs within 10 km. Output differential times. *(done locally: tested on pilot days 1–5: 2,589 dt from 314 pairs; float32 lag bug fixed)*
+- [x] **T4.2** GrowClust relative relocation. *(done locally: GrowClust built with brew gfortran and run on pilot days 1–5: 44 of 118 events relocated)*
 - [ ] **T4.3** Write `src/magnitude.py`: local magnitude ML from Wood–Anderson amplitudes, calibrated against ISC/EMSC magnitudes. *(code done, tested on days 1–2; calibration needs the full month)*
 
 ## Phase 5: Analysis
@@ -39,7 +39,7 @@ Work top to bottom. Each task has a "done when" check. Tick boxes in this file a
 - [ ] **T5.4** Quarry-blast filter (day/night ratio, known mine locations). *(code done + unit test)*
 
 ## Phase 6: Stretch
-- [ ] **T6.1** Template matching with EQcorrscan + fast_matched_filter (GPU). *(code done; EQcorrscan/FMF tested only on the Linux cloud box)*
+- [x] **T6.1** Template matching with EQcorrscan + fast_matched_filter (GPU). *(done locally: EQcorrscan + FMF (CPU) built in `.venv-tm`; 2 pilot days, 4 templates: 10 detections, FFTW = FMF)*
 
 ## Phase 7: Release
 - [ ] **T7.1** Catalog export (CSV + QuakeML) and Zenodo-ready data package. *(code done: `src/export_catalog.py`)*

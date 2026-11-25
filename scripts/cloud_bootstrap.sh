@@ -57,9 +57,17 @@ if [ -n "$GCBIN" ] && [ -n "$EXINP" ]; then
 fi
 echo "export GROWCLUST_HOME=$GC" > "$REPO/.cloud_env"
 
-log "5. EQcorrscan + fast_matched_filter"
-uv pip install --python .venv/bin/python "eqcorrscan==0.5.2" || echo "WARNING: EQcorrscan build failed"
-uv pip install --python .venv/bin/python "git+https://github.com/beridel/fast_matched_filter" || echo "WARNING: FMF build failed"
+log "5. EQcorrscan + fast_matched_filter (separate venv .venv-tm)"
+# EQcorrscan 0.5.2 does not work with NumPy 2, ObsPy 1.5 or setuptools >= 80 (found on the Mac,
+# 2026-11-25), so template matching gets its own pinned environment: requirements-tm-lock.txt.
+[ -d .venv-tm ] || uv venv --python 3.11 .venv-tm
+TM="$REPO/.venv-tm/bin/python"
+uv pip install --python "$TM" "setuptools<80" wheel cython "numpy<2" "obspy==1.4.1" "pandas<3" "pyarrow<19" pyyaml h5py matplotlib scipy
+uv pip install --python "$TM" --no-build-isolation "eqcorrscan==0.5.2" || echo "WARNING: EQcorrscan build failed"
+FMF="$VOLUME/tools/fast_matched_filter"
+[ -d "$FMF" ] || git clone -q --depth 1 https://github.com/beridel/fast_matched_filter "$FMF"
+( cd "$FMF" && (make python_gpu || echo "WARNING: FMF GPU build failed") && make python_cpu && uv pip install --python "$TM" . ) || echo "WARNING: FMF build failed"
+PY_MAIN="$PY"; PY="$TM"
 $PY - <<'PYEOF' || echo "WARNING: FMF GPU smoke test failed (template matching will fall back to FFTW on CPU)"
 import numpy as np
 from fast_matched_filter import matched_filter
@@ -72,6 +80,7 @@ cc = matched_filter(tmpl, mv, w, data, 1, arch="gpu")
 print("FMF gpu OK, max cc at", int(np.argmax(cc[0])), "(expect 1000)")
 PYEOF
 $PY -c "import eqcorrscan; print('EQcorrscan', eqcorrscan.__version__)" || true
+PY="$PY_MAIN"
 
 log "6. weights, metadata, unit tests"
 $PY - <<'PYEOF'

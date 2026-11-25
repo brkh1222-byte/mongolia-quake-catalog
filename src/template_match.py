@@ -101,6 +101,8 @@ def main(argv=None):
     ap.add_argument("--threshold", type=float, default=9.0, help="MAD multiple")
     ap.add_argument("--min-stations", type=int, default=6)
     ap.add_argument("--max-templates", type=int, default=0)
+    ap.add_argument("--backend", default="auto", choices=["auto", "fftw", "fmf"],
+                    help="auto: fast_matched_filter on cuda, EQcorrscan FFTW otherwise")
     args = ap.parse_args(argv)
     cfg = load_config(args.config)
     log = get_logger("template", path(cfg, "logs") / "template_match.log")
@@ -120,7 +122,10 @@ def main(argv=None):
     if args.max_templates:
         tribe.templates = tribe.templates[:args.max_templates]
     device = args.device or cfg["picking"]["device"]
-    xcorr = dict(xcorr_func="fmf", arch="gpu") if device == "cuda" else dict(xcorr_func="fftw")
+    if args.backend == "fmf" or (args.backend == "auto" and device == "cuda"):
+        xcorr = dict(xcorr_func="fmf", arch="gpu" if device == "cuda" else "cpu")
+    else:
+        xcorr = dict(xcorr_func="fftw")
     done_f = td / "done_days.txt"
     done = set(done_f.read_text().split()) if done_f.exists() else set()
     for t in days(args.start, args.end):

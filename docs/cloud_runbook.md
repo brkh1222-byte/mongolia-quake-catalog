@@ -36,7 +36,7 @@ Set `DL_THREADS` for `run_full.sh` from that benchmark: total streams = `WORKERS
 
 **Tested locally (Mac, CPU + MPS):** pass 1 end to end (smoke test, including interruption and resume), and on pilot days 1–2 ensemble → PyOcto → location → snippets → ML → cross-correlation → QuakeScope comparison → ISC validation → analysis → report.
 
-**Linux-only tools.** GrowClust (Fortran), EQcorrscan (FFTW) and fast_matched_filter (CUDA) could not be built on the Mac: there is no Fortran compiler, and installing a toolchain was not allowed in this session. They are built and smoke-tested for the first time by `cloud_bootstrap.sh`. **Read the bootstrap output before starting the run.** If the GrowClust example or the FMF smoke test fails, pass 1 can still start (it does not need them) while the problem is fixed.
+**Compiled tools.** GrowClust, EQcorrscan and fast_matched_filter (CPU build) were built and run on the Mac on pilot data (2026-11-25): GrowClust relocated 44 of 118 events of pilot days 1–5; template matching with 4 templates over 2 days gave identical detections with the FFTW and FMF-CPU backends. EQcorrscan needs its own environment (`.venv-tm`: numpy<2, obspy 1.4.1), which the bootstrap creates. **Not yet tested anywhere: the FMF CUDA build** (needs `nvcc`). Read the bootstrap output before pass 3.
 
 ## 2. The three passes
 
