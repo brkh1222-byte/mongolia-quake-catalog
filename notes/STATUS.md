@@ -1,48 +1,43 @@
-# STATUS (updated 2026-11-25 10:10 +08)
+# STATUS (updated 2026-11-28 23:40 +08)
 
-## State
-- Pilot download: **complete** (2,207 station-days, 40 GB in `data/`).
-- Picking (MPS): 955 of 2,207 station-days at 09:58; ~80 per hour → **ETA ≈ 26 Nov 01:30**. Loop: `scripts/pilot_pick_loop.sh`.
-- **`scripts/pilot_finish.sh` is running detached**: it waits for picking, then runs the whole chain for tag `pilot_2013-01` (ensemble → associate → locate → 2-layer check → snippets → ML → xcorr → GrowClust → QuakeScope → ISC validation → analysis → report → export), the strict-ensemble comparison and the QuakeScope-pick catalogue. Log `data/logs/pilot_finish.out`; the final line is `PILOT FINISH DONE`. Result: `results/validation_month.md`.
-- If the Mac reboots: restart the pick loop and the finisher:
-```bash
-cd ~/Desktop/mongolia-quake-catalog
-nohup caffeinate -i bash scripts/pilot_pick_loop.sh 2013-01-01 2013-02-01 HD > /dev/null 2>&1 &
-nohup caffeinate -i bash scripts/pilot_finish.sh > data/logs/pilot_finish.out 2>&1 &
-```
+## Where this project is
 
-## After `PILOT FINISH DONE`
-1. Read `results/validation_month.md`; replace the interim (days 1–5) numbers in `paper/main.tex` §4 and `paper/notes.md` C2.
-2. Confirm on the month: ensemble 0.1 (table "different pick sets"), primary velocity model (sensitivity section), magnitude calibration (`attenuation_fit.json`, `results/magcal_pilot_2013-01.csv`), blast flags against ISC `ke`/`sm` events.
-3. Template matching on the month needs 20 Hz copies: `python scripts/decimate_local.py --start 2013-01-01 --end 2013-02-01 --stations HD` (~7 GB), then `.venv-tm/bin/python src/template_match.py --tag pilot_2013-01 --stations HD --start 2013-01-01 --end 2013-02-01 --device cpu`.
-4. Then delete `data/mseed` (keep snippets) to free ~38 GB.
+**About 45% done overall.** The method is built and checked on one month of data. The full four-year run has not started, because it needs the rented GPU.
 
-## Done (all committed)
-- Researcher decisions applied: Dashdondog 2020 primary (D18, D18b), GEM faults (D19), regions frozen v1 with map (D20, awaiting review), compiler tests.
-- GrowClust (gfortran), EQcorrscan + FMF CPU (`.venv-tm`, D22) built and run on pilot data. FMF CUDA is untested.
-- Mongolian ML scale adopted (D20a); elevation datum (D21); float32 lag bug in xcorr fixed.
-- Interim 5-day validation: `results/validation_days1-5_interim.md`.
+| Part | Done |
+|---|---|
+| Pipeline code (download to export) | ~95% |
+| Pilot month (January 2013, Hangay) | ~95%: everything is run and validated except template matching, which is running now |
+| Full run of all XL data | 0%: waits for the rented RTX 4090 |
+| Paper draft | ~40%: Introduction, Data, Methods and the pilot validation are written; results, discussion and abstract wait for the full run |
 
-## Running now (detached, resumable)
-- `scripts/pilot_download_loop.sh 2013-01-01 2013-02-01 HD 2` (log `data/logs/dl_loop.out`), ~800 station-days left at 01:20.
-- `scripts/pilot_pick_loop.sh 2013-01-01 2013-02-01 HD` (MPS; ~45–50 s per station-day; day 4 of 31 at 01:25; ETA ≈ 26 Nov 05:00).
-Restart both after a reboot:
-```bash
-cd ~/Desktop/mongolia-quake-catalog
-nohup caffeinate -i bash scripts/pilot_download_loop.sh 2013-01-01 2013-02-01 HD 2 > data/logs/dl_loop.out 2>&1 &
-nohup caffeinate -i bash scripts/pilot_pick_loop.sh 2013-01-01 2013-02-01 HD > /dev/null 2>&1 &
-```
+**Finished**
+- One month of 72 stations was downloaded (42 GB), picked by six models, and turned into a catalogue: **624 earthquakes**, 448 of them well located. That is about the same number as the hand-made catalogue finds per month (about 590), not several times more.
+- Checks against outside sources: all 6 ISC events inside the network were found. Our picks reproduce 92–94% of the public QuakeScope picks from the same model.
+- Relocation (GrowClust) refined 169 events in 26 clusters. Magnitudes use the published Mongolian scale, and our own fit agrees with it.
+- The researcher's choices are applied: Dashdondog 2020 velocity model, GEM faults, frozen regions with a map (`results/fig_regions.png`).
+- The cloud run is scripted and tested at small scale on the Mac (`docs/cloud_runbook.md`).
 
-## When picking is done
-`bash scripts/run_pilot_chain.sh 2013-01-01 2013-02-01 pilot_2013-01` (ensemble → associate → locate → locate_2l → snippets → magnitude → xcorr → quakescope → validate → analyze → report). Then:
-- confirm the 0.1 ensemble threshold on the full month (rerun ensemble/associate with `--min-prob 0.3 --ensemble-name ens_strict --tag pilot_strict` and compare);
-- magnitude calibration: `data/catalogs/pilot_2013-01/attenuation_fit.json` (joint inversion for n, K) and `results/magcal_pilot_2013-01.csv` (ISC all-magnitude matches); a helper is extracting the Ganbat & Munkhuu (2026) Mongolian ML formula;
-- fill paper §4 from `results/validation_month.md`; update `paper/notes.md`;
-- delete `data/mseed` (keep snippets) once everything is validated.
+**Running now**
+- Template matching on the pilot month: `scripts/pilot_tm.sh`, log `data/logs/pilot_tm.out`. It first makes 20 Hz copies (~1 h), then scans the month on the CPU. Restart with `nohup caffeinate -i bash scripts/pilot_tm.sh > data/logs/pilot_tm.out 2>&1 &`; it skips finished days.
 
-## Done and verified
-- Pass-1 smoke test (MPS) passed; the pilot chain was verified end to end on days 1–2 (tag `dbg_d12`, made with the old 2-layer primary).
-- The cloud runbook stays in the repo (no GPU rental for now).
+**Next (no GPU or user needed)**
+1. Add the template-matching result to the pilot report and the paper.
+2. Delete the 40 GB of pilot waveforms once template matching is done (snippets are kept).
+3. Polish the paper sections that do not depend on the full run.
+
+**Needs the user**
+1. **Rent the GPU box** and give SSH details. Estimate: 70–130 hours, about $25–90, 400 GB volume. Nothing else blocks the full run.
+2. **Review the frozen regions** (`results/fig_regions.png`, `notes/decisions.md` D20). The 2000 m interior rule is assumed for now.
+3. **Decide what to do about depths.** A third of pilot events sit at the surface limit, and depths change a lot with the velocity model (see "Open problems").
+4. Optional: contact the XL team (A. Meltzer, M. Dashdondog). Their hand-picked catalogue would be the best check, and no emails have been sent.
+
+**Open problems found in the pilot**
+- **Depths are weak.** 206 of 624 events locate at the shallowest allowed depth. Among the best-located events, only 24% are above 10 km with the primary model, against 74% in the quick 5-day check with the 2-layer model. The depth hypotheses (H2a, H2b) need care.
+- **The margin region has few good events.** Only 5 quality-A events fall in the Hangay margin against 110 in the interior, because quality A needs stations all around. H2b may not be testable as designed.
+- **The blast screen caught nothing.** Three events the ISC lists as "known explosions" (magnitude 3.7–4.0) were located at 4–9 km depth and were not flagged. Either the ISC labels are doubtful or the screen is too weak; this is unresolved.
+- **The catalogue is not larger than the manual one** at the current setting of 8 picks per event.
+- Magnitude check against other agencies rests on only 4 events (ours are 0.1–0.4 higher).
 
 ---
 (older checkpoint below)
