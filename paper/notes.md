@@ -110,3 +110,5 @@ All 44 entries in `paper/references.bib` were checked against Crossref, DataCite
 | +0.06 | Hutton & Boore ML minus Mongolian-scale ML (median) | `events.csv` (`ml_hb87`, `ml_corr`) |
 | −0.36 (IDC ML), −0.18 (IDC mb), n = 4 | reference minus ours | §5 |
 | Mc 0.4, b 0.57 [0.52, 0.62], D90 21.2 km (interior) | **pilot-only, not in the paper as results** | §6 |
+| 92 %; 60 vs 27 km; 6 of 103 | surface-pinned events without a station within 20 km; median nearest station; pinned among events with a station within 10 km | analysis of `events.csv` (`depth_at_bound`, `dmin_km`), 2026-11-28 |
+| 742 events (130 A, 360 B, 221 C, 31 D); 119 new, median 4 stations, 65 C | 6-pick sensitivity | `data/catalogs/pilot_2013-01_n6/events.csv` |
