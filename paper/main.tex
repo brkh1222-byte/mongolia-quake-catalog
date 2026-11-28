@@ -55,6 +55,7 @@ For validation we use the ISC Bulletin \citep{isc_bulletin,storchak2017}, the EM
 %=====================================================================
 \section{Methods}
 \label{sec:methods}
+Figure~\ref{fig:pipeline} summarises the processing chain.
 
 \subsection{Ensemble phase picking}
 We run two deep-learning pickers, PhaseNet \citep{zhu2019} and EQTransformer \citep{mousavi2020}, each with three sets of pretrained weights from SeisBench \citep{woollam2022}: weights trained on the global STEAD data set (\texttt{stead}), on the Italian INSTANCE data set (\texttt{instance}), and the authors' original release (\texttt{original}). That makes six model/weight pairs. Each pair is applied to the continuous, demeaned three-component day record, padded with 60~s from the neighbouring days. SeisBench's sliding-window stacking produces continuous P and S probability traces, and every probability peak above 0.2 is kept as a raw pick. Picking runs on GPU. On a benchmark station-day, picks computed on a GPU (Apple MPS backend) were identical to the CPU picks to within 10~ms (\pilot{11/11 PhaseNet and 14/14 EQTransformer picks}).
@@ -104,7 +105,7 @@ The six model/weight pairs gave between 30 and 180 raw picks per station-day at 
 Our PhaseNet run with the INSTANCE weights at a threshold of 0.2 reproduces 92\% of the QuakeScope P picks (109,804 of 119,554) and 94\% of the S picks (43,429 of 46,031), with a median time difference of zero. This identifies the QuakeScope model as PhaseNet/INSTANCE and checks our data handling independently. We also reproduced exactly the published QuakeScope count for May 2013 \citep[209,901 picks on 72 stations;][]{ni2025}.
 
 \subsection{Events}
-Association and location gave 624 events after removing 22 split duplicates: 115 of quality A, 333 B, 159 C and 17 D. The 607 events of quality A--C correspond to 596 events per month. The manual catalogue of \citet{dashdondog2020} averages 587 per month (12,912 events in 22 months). At the present settings the automatic catalogue is therefore about as large as the manual one, not several times larger. Lowering the minimum from 8 to 6 picks (3 P) raises the count to 742 events; the 119 additional events are recorded by a median of 4 stations, and 65 of them are of quality C. We keep 8 picks. Quality A and B events have a median rms residual of 0.34~s, median formal errors of 0.8~km horizontally and 1.8~km in depth, a median azimuthal gap of 144$^\circ$, and a median of 22 picks on 15 stations.
+Association and location gave 624 events (Figure~\ref{fig:pilotmap}) after removing 22 split duplicates: 115 of quality A, 333 B, 159 C and 17 D. The 607 events of quality A--C correspond to 596 events per month. The manual catalogue of \citet{dashdondog2020} averages 587 per month (12,912 events in 22 months). At the present settings the automatic catalogue is therefore about as large as the manual one, not several times larger. Lowering the minimum from 8 to 6 picks (3 P) raises the count to 742 events; the 119 additional events are recorded by a median of 4 stations, and 65 of them are of quality C. We keep 8 picks. Quality A and B events have a median rms residual of 0.34~s, median formal errors of 0.8~km horizontally and 1.8~km in depth, a median azimuthal gap of 144$^\circ$, and a median of 22 picks on 15 stations.
 
 Table~\ref{tab:picksets} compares pick sets passed through the same associator and locator. An ensemble threshold of 0.3 yields 368 events, 361 of which are in the adopted set; the adopted threshold of 0.1 adds 256 events at the cost of a larger median residual (0.37~s against 0.24~s for quality A--C). The public QuakeScope picks yield 604 events, 550 of them in common with ours, with fewer of quality A (90 against 115).
 
@@ -201,6 +202,20 @@ $-5$ & 6.06 & 3.50 \\
 \includegraphics[width=0.95\textwidth]{../results/fig_availability.png}
 \caption{Data availability per station from the station metadata (epochs), with the pilot month marked.}
 \label{fig:availability}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.38\textwidth]{../results/fig_pipeline.png}
+\caption{Processing chain.}
+\label{fig:pipeline}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.85\textwidth]{../results/pilot_2013-01/fig_map.png}
+\caption{Pilot month (January 2013): the 448 events of quality A or B, coloured by depth below sea level and sized by magnitude. Triangles are the Hangay stations; dashed lines are the analysis regions. Shallow depths outside the dense part of the array are mostly unconstrained (see text). Method validation only.}
+\label{fig:pilotmap}
 \end{figure}
 
 \begin{figure}[p]
