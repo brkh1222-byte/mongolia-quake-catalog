@@ -1,0 +1,13 @@
+item,value
+events (all qualities),624
+events quality <= B,448
+magnitude column,ml_corr
+day/night rate ratio (09–18 local solar time),0.86
+blast-flagged events,0
+Mc (MAXC + 0.2),0.4
+Mc (GOF None%),
+"b (Aki–Utsu, at MAXC Mc)",0.56603024489469
+b 95% bootstrap,0.52–0.62
+N >= Mc,316
+"D90 hangay_interior (n=110, quality A)","21.2 [17.8, 24.0]"
+"D90 hangay_margin (n=5, quality A)","21.6 [11.2, 24.2]"

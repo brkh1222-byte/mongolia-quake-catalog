@@ -151,7 +151,8 @@ def main(argv=None):
         alt = d / "events_2layer.csv"
         if alt.exists():
             b = pd.read_csv(alt)
-            mm = cat.merge(b[["event_id", "latitude", "longitude", "depth_km", "quality"]], on="event_id", suffixes=("", "_dd"))
+            # event ids derive from the origin time and differ between models: match on the PyOcto index
+            mm = cat.merge(b[["pyocto_idx", "latitude", "longitude", "depth_km", "quality"]], on="pyocto_idx", suffixes=("", "_dd"))
             mA = mm[(mm.quality == "A") & (mm.quality_dd == "A")]
             if len(mA):
                 dz = mA.depth_km_dd - mA.depth_km
