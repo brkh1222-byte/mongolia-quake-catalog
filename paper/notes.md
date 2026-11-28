@@ -79,3 +79,34 @@ All 44 entries in `paper/references.bib` were checked against Crossref, DataCite
 | 4 templates, 2 days, 10 detections, FFTW = FMF | template-matching functional test | `data/catalogs/dbg_d15/templates/` |
 | 0.9287, 0.0012 | Mongolian ML coefficients (Ganbat & Munkhuu 2026, Eq. 4; full text read) | paper |
 | ~200,000 km²; 2500 m; ~1000 m above trend | Hangay upland (Meltzer et al. 2019, p. 1364) → 2000 m interior rule | `notes/decisions.md` D20 |
+
+## C3. Pilot month, January 2013 (FINAL for the paper's §4). Source: `results/validation_month.md` unless noted
+
+| Number | Statement | Source |
+|---|---|---|
+| 2,232 / 2,201 / 31 | station-days possible / with data / empty | §1 |
+| 41.7 GB | raw volume | §1 |
+| 30–180 per station-day | raw picks per pair (table) | §2 |
+| 133,041 (P 71,857, S 61,184); median support 2; 58 ms | ensemble picks | §2 |
+| 41.1 s | median picking time per station-day, six pairs, Apple MPS | §2 |
+| 92 % P (109,804 / 119,554), 94 % S (43,429 / 46,031) | QuakeScope picks reproduced by PhaseNet/instance p ≥ 0.2 | §3; `results/quakescope_pilot_2013-01.csv` |
+| 646 → 624 (22 split duplicates) | PyOcto events → after duplicate removal | `events_pyocto.csv`, `events_split_duplicates.csv` |
+| 115 A, 333 B, 159 C, 17 D | quality classes | §4 |
+| 607 → 596 per month; 1.0× | A–C events against the manual average (587 per month) | §4 |
+| 0.34 s; 0.8 km; 1.8 km; 144°; 22 picks on 15 stations | A+B medians | §4 |
+| 10.7 km; 24 % above 10 km | quality-A depth median and shallow fraction (n = 115) | §4 |
+| 206 of 624 | events at the shallowest allowed depth (none of quality A) | `data/catalogs/pilot_2013-01/events.csv` (`depth_at_bound`) |
+| 110 interior, 5 margin | quality-A events per region | `results/pilot_2013-01/events_analyzed.csv` |
+| 368 (84 A, 206 B), 361 in common; rms 0.24 vs 0.37 s | strict ensemble (p ≥ 0.3) | §4 table; `data/catalogs/pilot_2013-01_strict` |
+| 604 (90 A, 326 B), 550 in common | QuakeScope picks through the same chain | §4 table |
+| 0.37 vs 0.48 s; 448 vs 212 A+B; −2.5 km (−3.5 to −1.5); D90 23.6 vs 20.9 km (n = 86) | primary vs 2-layer model | §4 sensitivity |
+| 16,097 dt; 2,665 pairs; CC 0.77 | cross-correlation | §4 relocation |
+| 169 of 607 in 26 clusters; 0.55 / 0.68 km; 0.06 / 0.12 km | GrowClust | §4 relocation |
+| 13 ISC, 6 inside, 6 matched; 18 km; 0.7 s; 2 outside matched | ISC comparison | §5 |
+| 3 ISC "known explosions" matched, ML 3.7–4.0, depth 4–9 km, none flagged; day/night 0.86 | blast check | §5; `results/validation_pilot_2013-01_iscwide.csv`; §6 |
+| ML −0.2 to 4.3, median 0.8 (607 events) | magnitudes | §4 |
+| n 0.94 [0.84, 1.07]; K 0.0005 [0.0000, 0.0009]; 29,562 amplitudes | attenuation inversion | `data/catalogs/pilot_2013-01/attenuation_fit.json` |
+| slope −0.006 | station residual vs log R | `data/logs/pilot_finish.out` |
+| +0.06 | Hutton & Boore ML minus Mongolian-scale ML (median) | `events.csv` (`ml_hb87`, `ml_corr`) |
+| −0.36 (IDC ML), −0.18 (IDC mb), n = 4 | reference minus ours | §5 |
+| Mc 0.4, b 0.57 [0.52, 0.62], D90 21.2 km (interior) | **pilot-only, not in the paper as results** | §6 |
